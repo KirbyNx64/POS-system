@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.css": "/POS-system/static/css/main.61faef0c.css",
+    "main.js": "/POS-system/static/js/main.fa5b28b4.js",
+    "static/js/239.1b457c98.chunk.js": "/POS-system/static/js/239.1b457c98.chunk.js",
+    "static/js/977.14ff0879.chunk.js": "/POS-system/static/js/977.14ff0879.chunk.js",
+    "static/js/455.4b5c390d.chunk.js": "/POS-system/static/js/455.4b5c390d.chunk.js",
+    "index.html": "/POS-system/index.html",
+    "main.61faef0c.css.map": "/POS-system/static/css/main.61faef0c.css.map",
+    "main.fa5b28b4.js.map": "/POS-system/static/js/main.fa5b28b4.js.map",
+    "239.1b457c98.chunk.js.map": "/POS-system/static/js/239.1b457c98.chunk.js.map",
+    "977.14ff0879.chunk.js.map": "/POS-system/static/js/977.14ff0879.chunk.js.map",
+    "455.4b5c390d.chunk.js.map": "/POS-system/static/js/455.4b5c390d.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.61faef0c.css",
+    "static/js/main.fa5b28b4.js"
+  ]
+}
