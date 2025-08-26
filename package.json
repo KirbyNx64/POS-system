@@ -2,7 +2,7 @@
   "name": "sistema-pos",
   "version": "1.0.0",
   "private": true,
-  "homepage": "https://kirby-docs.github.io/sistema-pos",
+  "homepage": "https://KirbyNx64.github.io/POS-system",
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
