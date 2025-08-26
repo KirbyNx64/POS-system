@@ -1,6 +1,6 @@
 {
   "name": "sistema-pos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "homepage": "https://KirbyNx64.github.io/POS-system",
   "dependencies": {
@@ -19,7 +19,9 @@
     "uuid": "^9.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "set \"PUBLIC_URL=\" && react-scripts start",
+    "start:local": "set \"PUBLIC_URL=\" && react-scripts start",
+    "start:prod": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
