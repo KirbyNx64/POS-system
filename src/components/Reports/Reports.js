@@ -21,20 +21,26 @@ import {
   Select,
   MenuItem,
   Alert,
-  Chip
+  Chip,
+  useMediaQuery,
+  useTheme,
+  Collapse,
+  IconButton
 } from '@mui/material';
 import {
   Inventory,
   TrendingUp,
   Download,
-  DateRange
+  DateRange,
+  ExpandMore,
+  ExpandLess
 } from '@mui/icons-material';
 import { useSales } from '../../hooks/useSales';
 import { useProducts } from '../../hooks/useProducts';
 import { format, startOfDay, endOfDay, subDays, parseISO } from 'date-fns';
 import { displayCurrency } from '../../utils/formatPrice';
 
-function TabPanel({ children, value, index, ...other }) {
+function TabPanel({ children, value, index, isMobile = false, ...other }) {
   return (
     <div
       role="tabpanel"
@@ -44,7 +50,7 @@ function TabPanel({ children, value, index, ...other }) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 0 }}>
+        <Box sx={{ p: isMobile ? 1 : 0 }}>
           {children}
         </Box>
       )}
@@ -60,6 +66,9 @@ function Reports() {
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -223,109 +232,183 @@ function Reports() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography 
+        variant={isMobile ? "h5" : "h4"} 
+        gutterBottom
+        sx={{ fontSize: isMobile ? '1.3rem' : '2.125rem', mb: isMobile ? 2 : 3 }}
+      >
         Reportes y Análisis
       </Typography>
 
       {/* Filtros de fecha */}
-      <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item>
-            <DateRange sx={{ mr: 1, verticalAlign: 'middle' }} />
-            <Typography variant="h6" component="span">
+      <Paper elevation={isMobile ? 0 : 1} sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 2 : 3 }}>
+        <Box 
+          display="flex" 
+          justifyContent="space-between" 
+          alignItems="center" 
+          mb={isMobile ? 1 : 2}
+        >
+          <Box display="flex" alignItems="center">
+            <DateRange sx={{ mr: 1, verticalAlign: 'middle', fontSize: isMobile ? '1.2rem' : '1.5rem' }} />
+            <Typography 
+              variant={isMobile ? "subtitle1" : "h6"} 
+              component="span"
+              sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+            >
               Período de Análisis
             </Typography>
+          </Box>
+          {isMobile && (
+            <IconButton 
+              onClick={() => setShowFilters(!showFilters)}
+              size="small"
+            >
+              {showFilters ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          )}
+        </Box>
+        
+        <Collapse in={!isMobile || showFilters}>
+          <Grid container spacing={isMobile ? 1 : 2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="Fecha desde"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size={isMobile ? "small" : "medium"}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="Fecha hasta"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size={isMobile ? "small" : "medium"}
+              />
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              label="Fecha desde"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              label="Fecha hasta"
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-        </Grid>
+        </Collapse>
       </Paper>
 
-      <Paper elevation={1} sx={{ mb: 3 }}>
+      <Paper elevation={isMobile ? 0 : 1} sx={{ mb: isMobile ? 2 : 3 }}>
         <Tabs 
           value={activeTab} 
           onChange={handleTabChange}
           indicatorColor="primary"
           textColor="primary"
+          variant={isMobile ? "fullWidth" : "standard"}
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: isMobile ? '48px' : '48px',
+              fontSize: isMobile ? '0.75rem' : '0.875rem',
+              padding: isMobile ? '6px 8px' : '12px 16px'
+            },
+            '& .MuiTab-iconWrapper': {
+              marginBottom: isMobile ? '4px' : '6px'
+            }
+          }}
         >
           <Tab 
-            icon={<TrendingUp />} 
-            label="Reporte de Ventas" 
+            icon={<TrendingUp fontSize={isMobile ? 'small' : 'medium'} />} 
+            label={isMobile ? "Ventas" : "Reporte de Ventas"} 
             id="reports-tab-0"
           />
           <Tab 
-            icon={<Inventory />} 
-            label="Reporte de Inventario" 
+            icon={<Inventory fontSize={isMobile ? 'small' : 'medium'} />} 
+            label={isMobile ? "Inventario" : "Reporte de Inventario"} 
             id="reports-tab-1"
           />
         </Tabs>
       </Paper>
 
       {/* Reporte de Ventas */}
-      <TabPanel value={activeTab} index={0}>
-        <Grid container spacing={3}>
+      <TabPanel value={activeTab} index={0} isMobile={isMobile}>
+        <Grid container spacing={isMobile ? 1 : 3}>
           {/* Estadísticas generales */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Total Ventas
                 </Typography>
-                <Typography variant="h4" color="primary">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="primary"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {salesStats.totalSales}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Ingresos Totales
                 </Typography>
-                <Typography variant="h4" color="success.main">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="success.main"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {displayCurrency(salesStats.totalRevenue)}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Artículos Vendidos
                 </Typography>
-                <Typography variant="h4" color="info.main">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="info.main"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {salesStats.totalItems}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Venta Promedio
                 </Typography>
-                <Typography variant="h4">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"}
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {displayCurrency(salesStats.averageSale)}
                 </Typography>
               </CardContent>
@@ -334,41 +417,61 @@ function Reports() {
 
           {/* Productos más vendidos */}
           <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6">
+            <Paper elevation={isMobile ? 0 : 2} sx={{ p: isMobile ? 1 : 2 }}>
+              <Box 
+                display="flex" 
+                justifyContent="space-between" 
+                alignItems="center" 
+                mb={isMobile ? 1 : 2}
+                flexDirection={isMobile ? "column" : "row"}
+                gap={isMobile ? 1 : 0}
+              >
+                <Typography 
+                  variant={isMobile ? "subtitle1" : "h6"}
+                  sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+                >
                   Productos Más Vendidos
                 </Typography>
                 <Button
                   size="small"
-                  startIcon={<Download />}
+                  startIcon={<Download fontSize={isMobile ? "small" : "medium"} />}
                   onClick={() => exportReport('sales')}
+                  fullWidth={isMobile}
                 >
                   Exportar
                 </Button>
               </Box>
               <TableContainer>
-                <Table size="small">
+                <Table size={isMobile ? "small" : "small"}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Producto</TableCell>
-                      <TableCell align="right">Vendidos</TableCell>
-                      <TableCell align="right">Ingresos</TableCell>
+                      <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Producto</TableCell>
+                      <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Vendidos</TableCell>
+                      <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Ingresos</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {topProducts.slice(0, 5).map(([productId, data], index) => (
                       <TableRow key={productId}>
                         <TableCell>
-                          <Typography variant="body2">
+                          <Typography 
+                            variant="body2"
+                            sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                          >
                             {index + 1}. {data.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography 
+                            variant="caption" 
+                            color="text.secondary"
+                            sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}
+                          >
                             {data.category}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right">{data.quantity}</TableCell>
-                        <TableCell align="right">
+                        <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                          {data.quantity}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
                           {displayCurrency(data.revenue)}
                         </TableCell>
                       </TableRow>
@@ -377,24 +480,33 @@ function Reports() {
                 </Table>
               </TableContainer>
               {topProducts.length === 0 && (
-                <Alert severity="info">No hay datos de ventas en el período seleccionado</Alert>
+                <Alert 
+                  severity="info"
+                  sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}
+                >
+                  No hay datos de ventas en el período seleccionado
+                </Alert>
               )}
             </Paper>
           </Grid>
 
           {/* Ventas por categoría */}
           <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper elevation={isMobile ? 0 : 2} sx={{ p: isMobile ? 1 : 2 }}>
+              <Typography 
+                variant={isMobile ? "subtitle1" : "h6"} 
+                gutterBottom
+                sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+              >
                 Ventas por Categoría
               </Typography>
               <TableContainer>
-                <Table size="small">
+                <Table size={isMobile ? "small" : "small"}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Categoría</TableCell>
-                      <TableCell align="right">Ventas</TableCell>
-                      <TableCell align="right">Ingresos</TableCell>
+                      <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Categoría</TableCell>
+                      <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Ventas</TableCell>
+                      <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Ingresos</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -402,9 +514,13 @@ function Reports() {
                       .sort(([,a], [,b]) => b.revenue - a.revenue)
                       .map(([category, data]) => (
                         <TableRow key={category}>
-                          <TableCell>{category}</TableCell>
-                          <TableCell align="right">{data.sales}</TableCell>
-                          <TableCell align="right">
+                          <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                            {category}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                            {data.sales}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
                             {displayCurrency(data.revenue)}
                           </TableCell>
                         </TableRow>
@@ -413,7 +529,12 @@ function Reports() {
                 </Table>
               </TableContainer>
               {Object.keys(categoryStats).length === 0 && (
-                <Alert severity="info">No hay datos de ventas en el período seleccionado</Alert>
+                <Alert 
+                  severity="info"
+                  sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}
+                >
+                  No hay datos de ventas en el período seleccionado
+                </Alert>
               )}
             </Paper>
           </Grid>
@@ -421,52 +542,88 @@ function Reports() {
       </TabPanel>
 
       {/* Reporte de Inventario */}
-      <TabPanel value={activeTab} index={1}>
-        <Grid container spacing={3}>
+      <TabPanel value={activeTab} index={1} isMobile={isMobile}>
+        <Grid container spacing={isMobile ? 1 : 3}>
           {/* Estadísticas de inventario */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Total Productos
                 </Typography>
-                <Typography variant="h4" color="primary">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="primary"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {inventoryStats.totalProducts}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Valor Inventario
                 </Typography>
-                <Typography variant="h4" color="success.main">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="success.main"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {displayCurrency(inventoryStats.totalValue)}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Sin Stock
                 </Typography>
-                <Typography variant="h4" color="error.main">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="error.main"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {inventoryStats.outOfStock}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card elevation={isMobile ? 0 : 1}>
+              <CardContent sx={{ p: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
+                <Typography 
+                  color="textSecondary" 
+                  gutterBottom
+                  variant={isMobile ? "caption" : "body2"}
+                  sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                >
                   Stock Bajo
                 </Typography>
-                <Typography variant="h4" color="warning.main">
+                <Typography 
+                  variant={isMobile ? "h6" : "h4"} 
+                  color="warning.main"
+                  sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                >
                   {inventoryStats.lowStock}
                 </Typography>
               </CardContent>
@@ -475,10 +632,10 @@ function Reports() {
 
           {/* Filtros de inventario */}
           <Grid item xs={12}>
-            <Paper elevation={1} sx={{ p: 2 }}>
-              <Grid container spacing={2} alignItems="center">
+            <Paper elevation={isMobile ? 0 : 1} sx={{ p: isMobile ? 1 : 2 }}>
+              <Grid container spacing={isMobile ? 1 : 2} alignItems="center">
                 <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
+                  <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                     <InputLabel>Filtrar por Categoría</InputLabel>
                     <Select
                       value={selectedCategory}
@@ -494,10 +651,12 @@ function Reports() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item>
+                <Grid item xs={12} md={8}>
                   <Button
-                    startIcon={<Download />}
+                    startIcon={<Download fontSize={isMobile ? "small" : "medium"} />}
                     onClick={() => exportReport('inventory')}
+                    fullWidth={isMobile}
+                    size={isMobile ? "small" : "medium"}
                   >
                     Exportar Inventario
                   </Button>
@@ -508,34 +667,50 @@ function Reports() {
 
           {/* Tabla de inventario */}
           <Grid item xs={12}>
-            <Paper elevation={2}>
+            <Paper elevation={isMobile ? 0 : 2}>
               <TableContainer>
-                <Table>
+                <Table size={isMobile ? "small" : "medium"}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Producto</TableCell>
-                      <TableCell>Categoría</TableCell>
-                      <TableCell align="right">Stock</TableCell>
-                      <TableCell align="right">Precio</TableCell>
-                      <TableCell align="right">Valor Total</TableCell>
-                      <TableCell>Estado</TableCell>
-                      <TableCell>Último Movimiento</TableCell>
+                      <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Producto</TableCell>
+                      {!isMobile && <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Categoría</TableCell>}
+                      <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Stock</TableCell>
+                      {!isMobile && <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Precio</TableCell>}
+                      <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Valor</TableCell>
+                      <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Estado</TableCell>
+                      {!isMobile && <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>Último Movimiento</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {inventoryReport.slice(0, 20).map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
-                          <Typography variant="body2">
+                          <Typography 
+                            variant="body2"
+                            sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                          >
                             {product.name}
                           </Typography>
+                          {isMobile && (
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary"
+                              sx={{ fontSize: '0.65rem' }}
+                            >
+                              {product.category}
+                            </Typography>
+                          )}
                         </TableCell>
-                        <TableCell>{product.category}</TableCell>
-                        <TableCell align="right">{product.stock}</TableCell>
-                        <TableCell align="right">
-                          {displayCurrency(product.price)}
+                        {!isMobile && <TableCell>{product.category}</TableCell>}
+                        <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                          {product.stock}
                         </TableCell>
-                        <TableCell align="right">
+                        {!isMobile && (
+                          <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                            {displayCurrency(product.price)}
+                          </TableCell>
+                        )}
+                        <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
                           {displayCurrency(product.value)}
                         </TableCell>
                         <TableCell>
@@ -546,17 +721,21 @@ function Reports() {
                               product.status === 'Stock bajo' ? 'warning' : 'success'
                             }
                             size="small"
+                            sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}
                           />
                         </TableCell>
-                        <TableCell>{product.lastMovement}</TableCell>
+                        {!isMobile && <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{product.lastMovement}</TableCell>}
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
               {inventoryReport.length === 0 && (
-                <Box p={4} textAlign="center">
-                  <Alert severity="info">
+                <Box p={isMobile ? 2 : 4} textAlign="center">
+                  <Alert 
+                    severity="info"
+                    sx={{ fontSize: isMobile ? '0.875rem' : '1rem' }}
+                  >
                     No hay productos en la categoría seleccionada
                   </Alert>
                 </Box>

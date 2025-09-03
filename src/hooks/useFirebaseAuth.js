@@ -40,7 +40,7 @@ export function useFirebaseAuth() {
     });
  
     return () => unsubscribe();
-  }, []);
+  }, [loading]);
 
   const signInWithGoogle = async () => {
     try {
@@ -54,13 +54,28 @@ export function useFirebaseAuth() {
       console.log('🔐 useFirebaseAuth: Usuario de Firebase:', result.user);
       
       // El usuario se establece automáticamente en el useEffect
+      setLoading(false); // Desactivar loading inmediatamente en caso de éxito
       return result.user;
     } catch (error) {
       console.error('❌ useFirebaseAuth: Error al iniciar sesión con Google:', error);
+      console.log('❌ useFirebaseAuth: Código de error:', error.code);
+      
+      // Verificar si es un error de cancelación del usuario (ventana cerrada sin seleccionar)
+      if (error.code === 'auth/popup-closed-by-user' || 
+          error.code === 'auth/cancelled-popup-request' ||
+          error.code === 'auth/popup-blocked' ||
+          error.code === 'auth/user-cancelled') {
+        console.log('🔐 useFirebaseAuth: Usuario cerró la ventana sin seleccionar cuenta');
+        // No establecer error para cancelaciones del usuario
+        setError(null);
+        setLoading(false); // Desactivar loading INMEDIATAMENTE para cancelaciones
+        return null; // Retornar null sin lanzar error
+      }
+      
+      // Para otros errores, establecer el mensaje de error
       setError(error.message);
+      setLoading(false); // Desactivar loading para errores también
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -6,6 +6,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f5f5f5;
+  overflow-x: hidden;
 }
 
 code {
@@ -19,4 +20,125 @@ code {
 
 .app {
   min-height: 100vh;
+}
+
+/* Mejoras para dispositivos móviles */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  
+  /* Mejorar el scroll en iOS */
+  .MuiBox-root {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Ajustar el padding de los contenedores */
+  .MuiContainer-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Mejorar la legibilidad de los textos pequeños */
+  .MuiTypography-caption {
+    font-size: 0.7rem !important;
+  }
+  
+  /* Ajustar el tamaño de los botones en móvil */
+  .MuiButton-root {
+    min-height: 36px;
+  }
+  
+  /* Mejorar el espaciado de las tarjetas */
+  .MuiCard-root {
+    margin-bottom: 8px;
+  }
+  
+  /* Ajustar el drawer para móvil */
+  .MuiDrawer-paper {
+    width: 280px !important;
+  }
+  
+  /* Mejorar la navegación inferior */
+  .MuiBottomNavigation-root {
+    height: 56px !important;
+  }
+  
+  .MuiBottomNavigationAction-root {
+    min-width: 50px !important;
+    padding: 6px 8px !important;
+  }
+  
+  /* Ajustar el SpeedDial para móvil */
+  .MuiSpeedDial-root {
+    bottom: 80px !important;
+  }
+  
+  /* Mejorar la visualización de listas */
+  .MuiListItem-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Ajustar el tamaño de los chips */
+  .MuiChip-root {
+    height: 24px !important;
+    font-size: 0.7rem !important;
+  }
+  
+  /* Mejorar la visualización de los diálogos */
+  .MuiDialog-paper {
+    margin: 16px !important;
+    max-height: calc(100% - 32px) !important;
+  }
+}
+
+/* Mejoras para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+  }
+  
+  .MuiTypography-h4 {
+    font-size: 1.5rem !important;
+  }
+  
+  .MuiTypography-h5 {
+    font-size: 1.3rem !important;
+  }
+  
+  .MuiTypography-h6 {
+    font-size: 1.1rem !important;
+  }
+  
+  .MuiButton-root {
+    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+  }
+  
+  .MuiCardContent-root {
+    padding: 12px !important;
+  }
+  
+  .MuiGrid-container {
+    margin: -4px !important;
+  }
+  
+  .MuiGrid-item {
+    padding: 4px !important;
+  }
+}
+
+/* Mantener colores originales del tema */
+.MuiBottomNavigation-root {
+  background-color: white !important;
+  border-top: 1px solid #e0e0e0 !important;
+}
+
+.MuiSpeedDial-root .MuiFab-primary {
+  background-color: #1976d2 !important;
+}
+
+.MuiSpeedDial-root .MuiFab-primary:hover {
+  background-color: #1565c0 !important;
 }

@@ -12,8 +12,6 @@ import {
   Box,
   List,
   ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Divider,
   Alert,
@@ -26,7 +24,9 @@ import {
   Select,
   MenuItem,
   Chip,
-  InputAdornment
+  InputAdornment,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add,
@@ -42,17 +42,21 @@ import {
 import { useProducts } from '../../hooks/useProducts';
 import { useSales } from '../../hooks/useSales';
 import { useApp } from '../../contexts/AppContext';
+import { useTaxSettings } from '../../hooks/useTaxSettings';
 import { displayCurrency } from '../../utils/formatPrice';
 
 function PointOfSaleTab() {
   const { state, dispatch } = useApp();
   const { products: firestoreProducts } = useProducts(); // Usar productos de Firestore
-  const { processSale, loading: saleProcessing } = useSales(); // Hook para procesar ventas
+  const { processSale } = useSales(); // Hook para procesar ventas
+  const { taxSettings } = useTaxSettings(); // Hook para configuración de impuestos desde Firebase
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('efectivo');
   const [processing, setProcessing] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Filtrar productos disponibles
   const availableProducts = firestoreProducts.filter(product => 
@@ -64,7 +68,7 @@ function PointOfSaleTab() {
 
   // Calcular totales del carrito
   const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = state.taxSettings.enabled ? state.taxSettings.rate : 0;
+  const taxRate = taxSettings.enabled ? taxSettings.rate : 0;
   const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
@@ -169,33 +173,34 @@ function PointOfSaleTab() {
   };
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={isMobile ? 2 : 3}>
       {/* Panel de productos */}
       <Grid item xs={12} lg={8}>
-        <Paper elevation={2} sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper elevation={isMobile ? 0 : 2} sx={{ p: isMobile ? 1 : 2 }}>
+          <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom>
             Seleccionar Productos
           </Typography>
           
           {/* Búsqueda y filtros */}
-          <Grid container spacing={2} mb={3}>
+          <Grid container spacing={isMobile ? 1 : 2} mb={isMobile ? 2 : 3}>
             <Grid item xs={12} md={8}>
               <TextField
                 fullWidth
                 label="Buscar productos"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                size={isMobile ? "small" : "medium"}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search />
+                      <Search fontSize={isMobile ? "small" : "medium"} />
                     </InputAdornment>
                   ),
                 }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                 <InputLabel>Categoría</InputLabel>
                 <Select
                   value={selectedCategory}
@@ -214,14 +219,14 @@ function PointOfSaleTab() {
           </Grid>
 
           {/* Lista de productos */}
-          <Grid container spacing={2}>
+          <Grid container spacing={isMobile ? 1 : 2}>
             {availableProducts.map((product) => (
-              <Grid item xs={12} sm={6} md={4} key={product.id}>
-                <Card elevation={1}>
+              <Grid item xs={isMobile ? 6 : 12} sm={6} md={4} key={product.id}>
+                <Card elevation={isMobile ? 0 : 1} sx={{ height: '100%' }}>
                   <CardMedia
                     component="div"
                     sx={{
-                      height: 100,
+                      height: isMobile ? 80 : 100,
                       backgroundColor: '#f5f5f5',
                       display: 'flex',
                       alignItems: 'center',
@@ -235,31 +240,44 @@ function PointOfSaleTab() {
                         style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'cover' }}
                       />
                     ) : (
-                      <Inventory color="disabled" />
+                      <Inventory color="disabled" fontSize={isMobile ? "small" : "medium"} />
                     )}
                   </CardMedia>
-                  <CardContent sx={{ pb: 1 }}>
-                    <Typography variant="subtitle1" noWrap>
+                  <CardContent sx={{ pb: 1, px: isMobile ? 1 : 2 }}>
+                    <Typography 
+                      variant={isMobile ? "body2" : "subtitle1"} 
+                      noWrap
+                      sx={{ fontSize: isMobile ? '0.75rem' : '1rem' }}
+                    >
                       {product.name}
                     </Typography>
-                    <Typography variant="h6" color="primary">
+                    <Typography 
+                      variant={isMobile ? "body1" : "h6"} 
+                      color="primary"
+                      sx={{ fontSize: isMobile ? '0.875rem' : '1.25rem' }}
+                    >
                       {displayCurrency(product.price)}
                     </Typography>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.5}>
                       <Chip
                         label={`Stock: ${product.stock}`}
                         size="small"
                         color={product.stock <= state.stockThreshold ? 'warning' : 'success'}
+                        sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}
                       />
                     </Box>
                   </CardContent>
-                  <CardActions>
+                  <CardActions sx={{ px: isMobile ? 1 : 2, pb: isMobile ? 1 : 2 }}>
                     <Button
-                      size="small"
+                      size={isMobile ? "small" : "small"}
                       variant="contained"
-                      startIcon={<Add />}
+                      startIcon={<Add fontSize={isMobile ? "small" : "medium"} />}
                       onClick={() => addToCart(product)}
                       fullWidth
+                      sx={{ 
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        minHeight: isMobile ? '32px' : '36px'
+                      }}
                     >
                       Agregar
                     </Button>
@@ -287,25 +305,32 @@ function PointOfSaleTab() {
 
       {/* Carrito de compras */}
       <Grid item xs={12} lg={4}>
-        <Paper elevation={2} sx={{ p: 2, position: 'sticky', top: 20 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">
+        <Paper 
+          elevation={isMobile ? 0 : 2} 
+          sx={{ 
+            p: isMobile ? 1 : 2, 
+            position: isMobile ? 'static' : 'sticky', 
+            top: isMobile ? 'auto' : 20 
+          }}
+        >
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={isMobile ? 1 : 2}>
+            <Typography variant={isMobile ? "subtitle1" : "h6"}>
               Carrito de Ventas
             </Typography>
             {state.cart.length > 0 && (
               <IconButton onClick={clearCart} color="error" size="small">
-                <Clear />
+                <Clear fontSize={isMobile ? "small" : "medium"} />
               </IconButton>
             )}
           </Box>
 
           {state.cart.length === 0 ? (
-            <Box display="flex" flexDirection="column" alignItems="center" py={4}>
-              <ShoppingCart sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="body1" color="text.secondary">
+            <Box display="flex" flexDirection="column" alignItems="center" py={isMobile ? 2 : 4}>
+              <ShoppingCart sx={{ fontSize: isMobile ? 40 : 60, color: 'text.secondary', mb: isMobile ? 1 : 2 }} />
+              <Typography variant={isMobile ? "body2" : "body1"} color="text.secondary">
                 Carrito vacío
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant={isMobile ? "caption" : "body2"} color="text.secondary">
                 Agrega productos para comenzar la venta
               </Typography>
             </Box>
@@ -314,14 +339,31 @@ function PointOfSaleTab() {
               {/* Artículos en el carrito */}
               <List>
                 {state.cart.map((item) => (
-                  <ListItem key={item.id} divider sx={{ pr: 1, py: 2 }}>
+                  <ListItem key={item.id} divider sx={{ pr: 1, py: isMobile ? 1 : 2 }}>
                     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
                       {/* Información del producto */}
-                      <Box mb={1.5}>
-                        <Typography variant="body2" fontWeight="bold" sx={{ wordBreak: 'break-word', mb: 0.5 }}>
+                      <Box mb={isMobile ? 1 : 1.5}>
+                        <Typography 
+                          variant={isMobile ? "caption" : "body2"} 
+                          fontWeight="bold" 
+                          sx={{ 
+                            wordBreak: 'break-word', 
+                            mb: isMobile ? 0.5 : 0.5,
+                            fontSize: isMobile ? '0.75rem' : '0.875rem',
+                            display: 'block'
+                          }}
+                        >
                           {item.name}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ 
+                            fontSize: isMobile ? '0.65rem' : '0.75rem',
+                            display: 'block',
+                            mt: isMobile ? 0.25 : 0
+                          }}
+                        >
                           {displayCurrency(item.price)} c/u
                         </Typography>
                       </Box>
@@ -330,35 +372,62 @@ function PointOfSaleTab() {
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Box display="flex" alignItems="center">
                           <IconButton
-                            size="small"
+                            size={isMobile ? "small" : "small"}
                             onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                            sx={{ bgcolor: 'action.hover', mr: 1 }}
+                            sx={{ 
+                              bgcolor: 'action.hover', 
+                              mr: isMobile ? 0.5 : 1,
+                              minWidth: isMobile ? '28px' : '32px',
+                              height: isMobile ? '28px' : '32px'
+                            }}
                           >
-                            <Remove fontSize="small" />
+                            <Remove fontSize={isMobile ? "small" : "small"} />
                           </IconButton>
-                          <Typography sx={{ mx: 1, minWidth: 30, textAlign: 'center', fontWeight: 'bold' }}>
+                          <Typography 
+                            sx={{ 
+                              mx: isMobile ? 0.5 : 1, 
+                              minWidth: isMobile ? 20 : 30, 
+                              textAlign: 'center', 
+                              fontWeight: 'bold',
+                              fontSize: isMobile ? '0.75rem' : '0.875rem'
+                            }}
+                          >
                             {item.quantity}
                           </Typography>
                           <IconButton
-                            size="small"
+                            size={isMobile ? "small" : "small"}
                             onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                            sx={{ bgcolor: 'action.hover', ml: 1 }}
+                            sx={{ 
+                              bgcolor: 'action.hover', 
+                              ml: isMobile ? 0.5 : 1,
+                              minWidth: isMobile ? '28px' : '32px',
+                              height: isMobile ? '28px' : '32px'
+                            }}
                           >
-                            <Add fontSize="small" />
+                            <Add fontSize={isMobile ? "small" : "small"} />
                           </IconButton>
                         </Box>
                         
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="body2" fontWeight="bold" color="primary">
+                        <Box display="flex" alignItems="center" gap={isMobile ? 0.5 : 1}>
+                          <Typography 
+                            variant={isMobile ? "caption" : "body2"} 
+                            fontWeight="bold" 
+                            color="primary"
+                            sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                          >
                             {displayCurrency(item.price * item.quantity)}
                           </Typography>
                           <IconButton
-                            size="small"
+                            size={isMobile ? "small" : "small"}
                             onClick={() => removeFromCart(item.id)}
                             color="error"
-                            sx={{ ml: 1 }}
+                            sx={{ 
+                              ml: isMobile ? 0.5 : 1,
+                              minWidth: isMobile ? '28px' : '32px',
+                              height: isMobile ? '28px' : '32px'
+                            }}
                           >
-                            <Delete fontSize="small" />
+                            <Delete fontSize={isMobile ? "small" : "small"} />
                           </IconButton>
                         </Box>
                       </Box>
@@ -367,24 +436,26 @@ function PointOfSaleTab() {
                 ))}
               </List>
 
-              <Divider sx={{ my: 2 }} />
+              <Divider sx={{ my: isMobile ? 1 : 2 }} />
 
               {/* Resumen de totales */}
               <Box>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography>Subtotal:</Typography>
-                  <Typography>{displayCurrency(subtotal)}</Typography>
+                <Box display="flex" justifyContent="space-between" mb={isMobile ? 0.5 : 1}>
+                  <Typography variant={isMobile ? "body2" : "body1"}>Subtotal:</Typography>
+                  <Typography variant={isMobile ? "body2" : "body1"}>{displayCurrency(subtotal)}</Typography>
                 </Box>
-                {state.taxSettings.enabled && (
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography>{state.taxSettings.name} ({(state.taxSettings.rate * 100).toFixed(0)}%):</Typography>
-                    <Typography>{displayCurrency(tax)}</Typography>
+                {taxSettings.enabled && (
+                  <Box display="flex" justifyContent="space-between" mb={isMobile ? 0.5 : 1}>
+                    <Typography variant={isMobile ? "body2" : "body1"}>
+                      {taxSettings.name} ({(taxSettings.rate * 100).toFixed(0)}%):
+                    </Typography>
+                    <Typography variant={isMobile ? "body2" : "body1"}>{displayCurrency(tax)}</Typography>
                   </Box>
                 )}
-                <Divider sx={{ my: 1 }} />
-                <Box display="flex" justifyContent="space-between" mb={2}>
-                  <Typography variant="h6">Total:</Typography>
-                  <Typography variant="h6" color="primary">
+                <Divider sx={{ my: isMobile ? 0.5 : 1 }} />
+                <Box display="flex" justifyContent="space-between" mb={isMobile ? 1 : 2}>
+                  <Typography variant={isMobile ? "subtitle1" : "h6"}>Total:</Typography>
+                  <Typography variant={isMobile ? "subtitle1" : "h6"} color="primary">
                     {displayCurrency(total)}
                   </Typography>
                 </Box>
@@ -392,9 +463,13 @@ function PointOfSaleTab() {
                 <Button
                   variant="contained"
                   fullWidth
-                  startIcon={<Payment />}
+                  startIcon={<Payment fontSize={isMobile ? "small" : "medium"} />}
                   onClick={handleCheckout}
-                  size="large"
+                  size={isMobile ? "medium" : "large"}
+                  sx={{
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    minHeight: isMobile ? '40px' : '48px'
+                  }}
                 >
                   Procesar Venta
                 </Button>

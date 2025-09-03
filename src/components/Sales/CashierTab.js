@@ -8,8 +8,6 @@ import {
   Box,
   List,
   ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Divider,
   Alert,
@@ -23,7 +21,9 @@ import {
   MenuItem,
   Card,
   InputAdornment,
-  Chip
+  Chip,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add,
@@ -39,13 +39,15 @@ import {
 import { useProducts } from '../../hooks/useProducts';
 import { useSales } from '../../hooks/useSales';
 import { useApp } from '../../contexts/AppContext';
+import { useBusinessInfo } from '../../hooks/useBusinessInfo';
 import { displayCurrency } from '../../utils/formatPrice';
 import { downloadInvoice, printInvoice } from './InvoiceGenerator';
 
 function CashierTab() {
   const { state, dispatch } = useApp();
   const { products: firestoreProducts } = useProducts(); // Usar productos de Firestore
-  const { processSale, loading: saleProcessing } = useSales(); // Hook para procesar ventas
+  const { processSale } = useSales(); // Hook para procesar ventas
+  const { businessInfo } = useBusinessInfo(); // Hook para información del negocio
   const [barcodeInput, setBarcodeInput] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -54,6 +56,8 @@ function CashierTab() {
   const [processing, setProcessing] = useState(false);
   const [lastScannedProduct, setLastScannedProduct] = useState(null);
   const barcodeInputRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Calcular totales del carrito
   const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -61,12 +65,12 @@ function CashierTab() {
   const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
-  // Focus automático en el campo de código de barras
+  // Focus automático en el campo de código de barras (solo en desktop)
   useEffect(() => {
-    if (barcodeInputRef.current) {
+    if (!isMobile && barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
-  }, []);
+  }, [isMobile]);
 
   // Buscar producto por código de barras o nombre
   const findProduct = (searchTerm) => {
@@ -91,12 +95,14 @@ function CashierTab() {
       setLastScannedProduct(product);
       setBarcodeInput('');
       setQuantity(1);
-      // Mantener focus en el campo de código de barras
-      setTimeout(() => {
-        if (barcodeInputRef.current) {
-          barcodeInputRef.current.focus();
-        }
-      }, 100);
+      // Mantener focus en el campo de código de barras (solo en desktop)
+      if (!isMobile) {
+        setTimeout(() => {
+          if (barcodeInputRef.current) {
+            barcodeInputRef.current.focus();
+          }
+        }, 100);
+      }
     } else {
       alert(`Producto no encontrado: ${barcodeInput}`);
       setBarcodeInput('');
@@ -228,20 +234,22 @@ function CashierTab() {
       
       // Generar factura automáticamente
       try {
-        downloadInvoice(saleData, state.businessInfo);
+        downloadInvoice(saleData, businessInfo);
       } catch (invoiceError) {
         console.error('Error generando factura:', invoiceError);
         // No fallar la venta si hay error en la factura
       }
       
-      // Mostrar comprobante y mantener focus en código de barras
+      // Mostrar comprobante y mantener focus en código de barras (solo en desktop)
       alert(`¡Venta completada!\nTotal: ${displayCurrency(total)}\nMétodo: ${paymentMethod}\n\nLa factura se ha descargado automáticamente.`);
       
-      setTimeout(() => {
-        if (barcodeInputRef.current) {
-          barcodeInputRef.current.focus();
-        }
-      }, 100);
+      if (!isMobile) {
+        setTimeout(() => {
+          if (barcodeInputRef.current) {
+            barcodeInputRef.current.focus();
+          }
+        }, 100);
+      }
     } catch (error) {
       console.error('Error al procesar la venta:', error);
       alert('Error al procesar la venta: ' + error.message);
@@ -279,7 +287,7 @@ function CashierTab() {
                         </InputAdornment>
                       ),
                     }}
-                    autoFocus
+                    autoFocus={!isMobile}
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
@@ -557,6 +565,17 @@ function CashierTab() {
             <Typography variant="subtitle2" gutterBottom>
               Opciones de Factura:
             </Typography>
+            
+            {/* Información del negocio para la factura */}
+            {businessInfo && businessInfo.name && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  <strong>Negocio:</strong> {businessInfo.name}
+                  {businessInfo.address && ` - ${businessInfo.address}`}
+                </Typography>
+              </Alert>
+            )}
+            
             <Box display="flex" gap={1} flexWrap="wrap">
               <Button
                 variant="outlined"
@@ -569,7 +588,7 @@ function CashierTab() {
                     total,
                     paymentMethod
                   };
-                  downloadInvoice(saleData, state.businessInfo);
+                  downloadInvoice(saleData, businessInfo);
                 }}
                 disabled={state.cart.length === 0}
               >
@@ -586,7 +605,7 @@ function CashierTab() {
                     total,
                     paymentMethod
                   };
-                  printInvoice(saleData, state.businessInfo);
+                  printInvoice(saleData, businessInfo);
                 }}
                 disabled={state.cart.length === 0}
               >

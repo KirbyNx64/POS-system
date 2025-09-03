@@ -11,7 +11,12 @@ import {
   ListItemText,
   Chip,
   IconButton,
-  Button
+  Button,
+  useMediaQuery,
+  useTheme,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon
 } from '@mui/material';
 import {
   Inventory,
@@ -20,39 +25,58 @@ import {
   TrendingUp,
   ShoppingCart,
   Refresh,
-  RestartAlt,
   CleaningServices,
   DeleteForever,
   Settings
 } from '@mui/icons-material';
 import { useSales } from '../../hooks/useSales';
 import { useProducts } from '../../hooks/useProducts';
+import { useFirebaseAuth } from '../../hooks/useFirebaseAuth';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { resetSystemData, clearSalesData, clearAllData } from '../../utils/resetSystem';
+import { clearFirebaseSales, clearAllFirebaseData } from '../../utils/resetSystem';
 import { displayCurrency } from '../../utils/formatPrice';
 import TaxSettings from '../Settings/TaxSettings';
 
-function StatCard({ title, value, icon, color = 'primary', subtitle }) {
+function StatCard({ title, value, icon, color = 'primary', subtitle, isMobile = false }) {
   return (
-    <Card elevation={3}>
-      <CardContent>
+    <Card elevation={isMobile ? 1 : 3} sx={{ height: isMobile ? 'auto' : '100%' }}>
+      <CardContent sx={{ p: isMobile ? 2 : 3 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box>
-            <Typography color="textSecondary" gutterBottom variant="body2">
+          <Box sx={{ flex: 1 }}>
+            <Typography 
+              color="textSecondary" 
+              gutterBottom 
+              variant={isMobile ? "caption" : "body2"}
+              sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+            >
               {title}
             </Typography>
-            <Typography variant="h4" component="h2" color={color}>
+            <Typography 
+              variant={isMobile ? "h5" : "h4"} 
+              component="h2" 
+              color={color}
+              sx={{ fontSize: isMobile ? '1.2rem' : '2.125rem' }}
+            >
               {value}
             </Typography>
             {subtitle && (
-              <Typography variant="body2" color="textSecondary">
+              <Typography 
+                variant={isMobile ? "caption" : "body2"} 
+                color="textSecondary"
+                sx={{ fontSize: isMobile ? '0.65rem' : '0.875rem' }}
+              >
                 {subtitle}
               </Typography>
             )}
           </Box>
-          <Box color={color === 'primary' ? 'primary.main' : `${color}.main`}>
-            {icon}
+          <Box 
+            color={color === 'primary' ? 'primary.main' : `${color}.main`}
+            sx={{ ml: 1 }}
+          >
+            {React.cloneElement(icon, { 
+              fontSize: isMobile ? 'medium' : 'large' 
+            })}
           </Box>
         </Box>
       </CardContent>
@@ -64,7 +88,11 @@ function Dashboard() {
   console.log('Dashboard - Hook ejecutándose');
   const { sales, loading: salesLoading, error: salesError } = useSales();
   const { allProducts, loading: productsLoading, error: productsError } = useProducts();
+  const { user } = useFirebaseAuth();
   const [taxSettingsOpen, setTaxSettingsOpen] = useState(false);
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Mostrar loading mientras se cargan los datos
   if (salesLoading || productsLoading) {
@@ -158,132 +186,211 @@ function Dashboard() {
     .sort(([,a], [,b]) => b.quantity - a.quantity)
     .slice(0, 5);
 
-  // Valor total del inventario
-  const inventoryValue = allProducts
-    .filter(p => p.active)
-    .reduce((sum, product) => sum + (product.price * product.stock), 0);
 
-  const handleResetSystem = () => {
-    if (window.confirm('¿Estás seguro de que quieres resetear el sistema? Esto eliminará todos los productos y ventas.')) {
-      resetSystemData();
-    }
-  };
 
-  const handleClearSales = () => {
+  const handleClearSales = async () => {
     if (window.confirm('¿Estás seguro de que quieres eliminar todas las ventas? Los productos se mantendrán intactos.')) {
-      clearSalesData();
+      try {
+        if (!user || !user.id) {
+          alert('Error: Usuario no autenticado');
+          return;
+        }
+        
+        const result = await clearFirebaseSales(user.id);
+        alert(`Ventas eliminadas correctamente. Se eliminaron ${result.deletedCount} ventas.`);
+        
+        // Recargar la página para actualizar los datos
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Error al limpiar ventas:', error);
+        alert('Error al limpiar las ventas. Por favor, inténtalo de nuevo.');
+      }
     }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm('¿Estás seguro de que quieres eliminar TODOS los datos? Esto borrará productos, ventas e inventario completamente.')) {
-      clearAllData();
+      try {
+        if (!user || !user.id) {
+          alert('Error: Usuario no autenticado');
+          return;
+        }
+        
+        const result = await clearAllFirebaseData(user.id);
+        alert(`Todos los datos han sido eliminados. Se eliminaron ${result.deletedCount} documentos.`);
+        
+        // Recargar la página para actualizar los datos
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Error al eliminar todos los datos:', error);
+        alert('Error al eliminar los datos. Por favor, inténtalo de nuevo.');
+      }
     }
   };
+
+  const speedDialActions = [
+    {
+      icon: <Settings />,
+      name: 'Configurar Impuestos',
+      onClick: () => setTaxSettingsOpen(true)
+    },
+    {
+      icon: <CleaningServices />,
+      name: 'Limpiar Ventas',
+      onClick: handleClearSales
+    },
+    {
+      icon: <DeleteForever />,
+      name: 'Borrar Todo',
+      onClick: handleClearAll
+    }
+  ];
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">
+      <Box 
+        display="flex" 
+        justifyContent="space-between" 
+        alignItems="center" 
+        mb={isMobile ? 2 : 3}
+        flexDirection={isMobile ? 'column' : 'row'}
+        gap={isMobile ? 2 : 0}
+      >
+        <Typography 
+          variant={isMobile ? "h5" : "h4"}
+          sx={{ fontSize: isMobile ? '1.3rem' : '2.125rem' }}
+        >
           Dashboard
         </Typography>
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<Settings />}
-            onClick={() => setTaxSettingsOpen(true)}
-            sx={{ mr: 1 }}
-            size="small"
-          >
-            Configurar Impuestos
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<CleaningServices />}
-            onClick={handleClearSales}
-            sx={{ mr: 1 }}
-            size="small"
-          >
-            Limpiar Ventas
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteForever />}
-            onClick={handleClearAll}
-            size="small"
-          >
-            Borrar Todo
-          </Button>
-        </Box>
+        
+        {!isMobile && (
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<Settings />}
+              onClick={() => setTaxSettingsOpen(true)}
+              sx={{ mr: 1 }}
+              size="small"
+            >
+              Configurar Impuestos
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<CleaningServices />}
+              onClick={handleClearSales}
+              sx={{ mr: 1 }}
+              size="small"
+            >
+              Limpiar Ventas
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteForever />}
+              onClick={handleClearAll}
+              size="small"
+            >
+              Borrar Todo
+            </Button>
+          </Box>
+        )}
       </Box>
       
-      <Grid container spacing={3}>
+      <Grid container spacing={isMobile ? 2 : 3}>
         {/* Estadísticas principales */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Productos Activos"
             value={activeProducts}
             subtitle={`de ${totalProducts} total`}
-            icon={<Inventory fontSize="large" />}
+            icon={<Inventory />}
+            isMobile={isMobile}
           />
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Ventas Hoy"
             value={todaySales.length}
             subtitle={`${todayItemsSold} artículos`}
-            icon={<ShoppingCart fontSize="large" />}
+            icon={<ShoppingCart />}
             color="success"
+            isMobile={isMobile}
           />
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Ingresos Hoy"
             value={displayCurrency(todayRevenue)}
             subtitle={`Semana: ${displayCurrency(weekRevenue)}`}
-            icon={<AttachMoney fontSize="large" />}
+            icon={<AttachMoney />}
             color="success"
+            isMobile={isMobile}
           />
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Total de Ventas"
             value={displayCurrency(sales.reduce((sum, sale) => sum + sale.total, 0))}
             subtitle={`${sales.length} ventas totales`}
-            icon={<TrendingUp fontSize="large" />}
+            icon={<TrendingUp />}
             color="info"
+            isMobile={isMobile}
           />
         </Grid>
 
         {/* Alertas de stock */}
         {(lowStockProducts.length > 0 || outOfStockProducts.length > 0) && (
           <Grid item xs={12}>
-            <Paper elevation={3} sx={{ p: 2 }}>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Warning color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6">
+            <Paper elevation={isMobile ? 1 : 3} sx={{ p: isMobile ? 1.5 : 2 }}>
+              <Box display="flex" alignItems="center" mb={isMobile ? 1 : 2}>
+                <Warning color="warning" sx={{ mr: 1, fontSize: isMobile ? '1.2rem' : '1.5rem' }} />
+                <Typography 
+                  variant={isMobile ? "subtitle1" : "h6"}
+                  sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+                >
                   Alertas de Inventario
                 </Typography>
               </Box>
               
-              <Grid container spacing={2}>
+              <Grid container spacing={isMobile ? 1 : 2}>
                 {outOfStockProducts.length > 0 && (
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" color="error" gutterBottom>
+                    <Typography 
+                      variant={isMobile ? "body2" : "subtitle1"} 
+                      color="error" 
+                      gutterBottom
+                      sx={{ fontSize: isMobile ? '0.8rem' : '1rem' }}
+                    >
                       Sin Stock ({outOfStockProducts.length})
                     </Typography>
                     <List dense>
-                      {outOfStockProducts.slice(0, 5).map(product => (
-                        <ListItem key={product.id}>
+                      {outOfStockProducts.slice(0, isMobile ? 3 : 5).map(product => (
+                        <ListItem key={product.id} sx={{ px: 0 }}>
                           <ListItemText
                             primary={product.name}
                             secondary={product.category}
+                            primaryTypographyProps={{ 
+                              fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                            }}
+                            secondaryTypographyProps={{ 
+                              fontSize: isMobile ? '0.7rem' : '0.75rem' 
+                            }}
                           />
-                          <Chip label="Sin stock" color="error" size="small" />
+                          <Chip 
+                            label="Sin stock" 
+                            color="error" 
+                            size="small"
+                            sx={{ fontSize: isMobile ? '0.6rem' : '0.75rem' }}
+                          />
                         </ListItem>
                       ))}
                     </List>
@@ -292,20 +399,32 @@ function Dashboard() {
                 
                 {lowStockProducts.length > 0 && (
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1" color="warning.main" gutterBottom>
+                    <Typography 
+                      variant={isMobile ? "body2" : "subtitle1"} 
+                      color="warning.main" 
+                      gutterBottom
+                      sx={{ fontSize: isMobile ? '0.8rem' : '1rem' }}
+                    >
                       Stock Bajo ({lowStockProducts.length})
                     </Typography>
                     <List dense>
-                      {lowStockProducts.slice(0, 5).map(product => (
-                        <ListItem key={product.id}>
+                      {lowStockProducts.slice(0, isMobile ? 3 : 5).map(product => (
+                        <ListItem key={product.id} sx={{ px: 0 }}>
                           <ListItemText
                             primary={product.name}
                             secondary={`Stock: ${product.stock}`}
+                            primaryTypographyProps={{ 
+                              fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                            }}
+                            secondaryTypographyProps={{ 
+                              fontSize: isMobile ? '0.7rem' : '0.75rem' 
+                            }}
                           />
                           <Chip 
                             label={`${product.stock} unidades`} 
                             color="warning" 
-                            size="small" 
+                            size="small"
+                            sx={{ fontSize: isMobile ? '0.6rem' : '0.75rem' }}
                           />
                         </ListItem>
                       ))}
@@ -319,23 +438,45 @@ function Dashboard() {
 
         {/* Productos más vendidos */}
         <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 2, height: '400px' }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper 
+            elevation={isMobile ? 1 : 3} 
+            sx={{ 
+              p: isMobile ? 1.5 : 2, 
+              height: isMobile ? 'auto' : '400px',
+              minHeight: isMobile ? '200px' : '400px'
+            }}
+          >
+            <Typography 
+              variant={isMobile ? "subtitle1" : "h6"} 
+              gutterBottom
+              sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+            >
               Productos Más Vendidos
             </Typography>
             <List>
               {topProducts.length > 0 ? (
-                topProducts.map(([productId, data], index) => (
-                  <ListItem key={productId}>
+                topProducts.slice(0, isMobile ? 3 : 5).map(([productId, data], index) => (
+                  <ListItem key={productId} sx={{ px: 0 }}>
                     <ListItemText
                       primary={`${index + 1}. ${data.name}`}
                       secondary={`${data.quantity} vendidos - ${displayCurrency(data.revenue)}`}
+                      primaryTypographyProps={{ 
+                        fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                      }}
+                      secondaryTypographyProps={{ 
+                        fontSize: isMobile ? '0.7rem' : '0.75rem' 
+                      }}
                     />
                   </ListItem>
                 ))
               ) : (
                 <ListItem>
-                  <ListItemText primary="No hay ventas registradas aún" />
+                  <ListItemText 
+                    primary="No hay ventas registradas aún"
+                    primaryTypographyProps={{ 
+                      fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                    }}
+                  />
                 </ListItem>
               )}
             </List>
@@ -344,42 +485,102 @@ function Dashboard() {
 
         {/* Ventas recientes */}
         <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 2, height: '400px' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">
+          <Paper 
+            elevation={isMobile ? 1 : 3} 
+            sx={{ 
+              p: isMobile ? 1.5 : 2, 
+              height: isMobile ? 'auto' : '400px',
+              minHeight: isMobile ? '200px' : '400px'
+            }}
+          >
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={isMobile ? 1 : 2}>
+              <Typography 
+                variant={isMobile ? "subtitle1" : "h6"}
+                sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+              >
                 Ventas Recientes
               </Typography>
               <IconButton size="small">
-                <Refresh />
+                <Refresh fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             </Box>
             <List>
-              {sales.slice(-5).reverse().map(sale => (
-                <ListItem key={sale.id}>
+              {sales.slice(-5).reverse().slice(0, isMobile ? 3 : 5).map(sale => (
+                <ListItem key={sale.id} sx={{ px: 0 }}>
                   <ListItemText
                     primary={`Venta #${sale.id.slice(-6)}`}
                     secondary={
                       <Box>
-                        <Typography variant="body2" color="textSecondary">
+                        <Typography 
+                          variant="body2" 
+                          color="textSecondary"
+                          sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
+                        >
                           {format(new Date(sale.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
                         </Typography>
-                        <Typography variant="body2">
+                        <Typography 
+                          variant="body2"
+                          sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
+                        >
                           {sale.items.length} artículos - {displayCurrency(sale.total)}
                         </Typography>
                       </Box>
                     }
+                    primaryTypographyProps={{ 
+                      fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                    }}
                   />
                 </ListItem>
               ))}
               {sales.length === 0 && (
                 <ListItem>
-                  <ListItemText primary="No hay ventas registradas aún" />
+                  <ListItemText 
+                    primary="No hay ventas registradas aún"
+                    primaryTypographyProps={{ 
+                      fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                    }}
+                  />
                 </ListItem>
               )}
             </List>
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Speed Dial para móvil */}
+      {isMobile && (
+        <SpeedDial
+          ariaLabel="Acciones rápidas"
+          sx={{ 
+            position: 'fixed', 
+            bottom: 16, 
+            right: 16,
+            zIndex: theme.zIndex.speedDial,
+            '& .MuiFab-primary': {
+              backgroundColor: theme.palette.primary.main,
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark
+              }
+            }
+          }}
+          icon={<SpeedDialIcon />}
+          onClose={() => setSpeedDialOpen(false)}
+          onOpen={() => setSpeedDialOpen(true)}
+          open={speedDialOpen}
+        >
+          {speedDialActions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              icon={action.icon}
+              tooltipTitle={action.name}
+              onClick={() => {
+                action.onClick();
+                setSpeedDialOpen(false);
+              }}
+            />
+          ))}
+        </SpeedDial>
+      )}
 
       {/* Dialog de configuración de impuestos */}
       <TaxSettings
