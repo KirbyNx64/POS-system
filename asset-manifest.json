@@ -1,19 +1,19 @@
 {
   "files": {
     "main.css": "/POS-system/static/css/main.7030d1e8.css",
-    "main.js": "/POS-system/static/js/main.7a4c68a2.js",
+    "main.js": "/POS-system/static/js/main.71cb675b.js",
     "static/js/239.1b457c98.chunk.js": "/POS-system/static/js/239.1b457c98.chunk.js",
     "static/js/977.14ff0879.chunk.js": "/POS-system/static/js/977.14ff0879.chunk.js",
     "static/js/455.4b5c390d.chunk.js": "/POS-system/static/js/455.4b5c390d.chunk.js",
     "index.html": "/POS-system/index.html",
     "main.7030d1e8.css.map": "/POS-system/static/css/main.7030d1e8.css.map",
-    "main.7a4c68a2.js.map": "/POS-system/static/js/main.7a4c68a2.js.map",
+    "main.71cb675b.js.map": "/POS-system/static/js/main.71cb675b.js.map",
     "239.1b457c98.chunk.js.map": "/POS-system/static/js/239.1b457c98.chunk.js.map",
     "977.14ff0879.chunk.js.map": "/POS-system/static/js/977.14ff0879.chunk.js.map",
     "455.4b5c390d.chunk.js.map": "/POS-system/static/js/455.4b5c390d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.7030d1e8.css",
-    "static/js/main.7a4c68a2.js"
+    "static/js/main.71cb675b.js"
   ]
 }
