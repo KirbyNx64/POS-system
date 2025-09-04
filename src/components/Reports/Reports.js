@@ -128,20 +128,29 @@ function Reports() {
     }
   });
 
+  // Filtrar solo ventas completadas para estadísticas de ingresos
+  const completedSales = filteredSales.filter(sale => sale.status === 'completed');
+  
   // Calcular estadísticas de ventas
+  const pendingSales = filteredSales.filter(sale => sale.status === 'pending');
+  const cancelledSales = filteredSales.filter(sale => sale.status === 'cancelled');
+  
   const salesStats = {
-    totalSales: filteredSales.length,
-    totalRevenue: filteredSales.reduce((sum, sale) => sum + sale.total, 0),
-    totalItems: filteredSales.reduce((sum, sale) => 
+    totalSales: filteredSales.length, // Total de ventas (incluyendo pendientes y canceladas)
+    completedSales: completedSales.length, // Solo ventas completadas
+    pendingSales: pendingSales.length, // Ventas pendientes
+    cancelledSales: cancelledSales.length, // Ventas canceladas
+    totalRevenue: completedSales.reduce((sum, sale) => sum + sale.total, 0), // Solo ventas completadas
+    totalItems: completedSales.reduce((sum, sale) => 
       sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
-    ),
-    averageSale: filteredSales.length > 0 ? 
-      filteredSales.reduce((sum, sale) => sum + sale.total, 0) / filteredSales.length : 0
+    ), // Solo ventas completadas
+    averageSale: completedSales.length > 0 ? 
+      completedSales.reduce((sum, sale) => sum + sale.total, 0) / completedSales.length : 0
   };
 
-  // Productos más vendidos
+  // Productos más vendidos (solo ventas completadas)
   const productSales = {};
-  filteredSales.forEach(sale => {
+  completedSales.forEach(sale => {
     sale.items.forEach(item => {
       if (productSales[item.id]) {
         productSales[item.id].quantity += item.quantity;
@@ -161,9 +170,9 @@ function Reports() {
     .sort(([,a], [,b]) => b.quantity - a.quantity)
     .slice(0, 10);
 
-  // Ventas por categoría
+  // Ventas por categoría (solo ventas completadas)
   const categoryStats = {};
-  filteredSales.forEach(sale => {
+  completedSales.forEach(sale => {
     sale.items.forEach(item => {
       const product = allProducts.find(p => p.id === item.id);
       const category = product?.category || 'Sin categoría';
@@ -446,6 +455,75 @@ function Reports() {
                 </Typography>
               </CardContent>
             </Card>
+          </Grid>
+
+          {/* Desglose de ventas por estado */}
+          <Grid item xs={12}>
+            <Paper elevation={isMobile ? 0 : 1} sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 2 : 3 }}>
+              <Typography 
+                variant={isMobile ? "subtitle1" : "h6"} 
+                gutterBottom
+                sx={{ fontSize: isMobile ? '1rem' : '1.25rem', mb: 2 }}
+              >
+                Desglose de Ventas por Estado
+              </Typography>
+              <Grid container spacing={isMobile ? 1 : 2}>
+                <Grid item xs={4}>
+                  <Box textAlign="center">
+                    <Typography 
+                      variant={isMobile ? "h6" : "h4"} 
+                      color="success.main"
+                      sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                    >
+                      {salesStats.completedSales}
+                    </Typography>
+                    <Typography 
+                      variant={isMobile ? "caption" : "body2"}
+                      color="textSecondary"
+                      sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                    >
+                      Completadas
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={4}>
+                  <Box textAlign="center">
+                    <Typography 
+                      variant={isMobile ? "h6" : "h4"} 
+                      color="warning.main"
+                      sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                    >
+                      {salesStats.pendingSales}
+                    </Typography>
+                    <Typography 
+                      variant={isMobile ? "caption" : "body2"}
+                      color="textSecondary"
+                      sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                    >
+                      Pendientes
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={4}>
+                  <Box textAlign="center">
+                    <Typography 
+                      variant={isMobile ? "h6" : "h4"} 
+                      color="error.main"
+                      sx={{ fontSize: isMobile ? '1.1rem' : '2.125rem' }}
+                    >
+                      {salesStats.cancelledSales}
+                    </Typography>
+                    <Typography 
+                      variant={isMobile ? "caption" : "body2"}
+                      color="textSecondary"
+                      sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+                    >
+                      Canceladas
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
           </Grid>
 
           {/* Productos más vendidos */}
