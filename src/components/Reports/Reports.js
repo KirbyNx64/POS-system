@@ -37,8 +37,10 @@ import {
 } from '@mui/icons-material';
 import { useSales } from '../../hooks/useSales';
 import { useProducts } from '../../hooks/useProducts';
+import { useBusinessInfo } from '../../hooks/useBusinessInfo';
 import { format, startOfDay, endOfDay, subDays, parseISO } from 'date-fns';
 import { displayCurrency } from '../../utils/formatPrice';
+import { downloadSalesReport, downloadInventoryReport, downloadTotalSalesReport } from '../../utils/reportPdfGenerator';
 
 function TabPanel({ children, value, index, isMobile = false, ...other }) {
   return (
@@ -62,6 +64,7 @@ function Reports() {
   console.log('Reports - Hook ejecutándose');
   const { sales, loading: salesLoading, error: salesError } = useSales();
   const { allProducts, loading: productsLoading, error: productsError } = useProducts();
+  const { businessInfo } = useBusinessInfo();
   const [activeTab, setActiveTab] = useState(0);
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -215,19 +218,49 @@ function Reports() {
     lowStock: inventoryReport.filter(p => p.stock > 0 && p.stock <= 10).length // Usar valor fijo por ahora
   };
 
-  // Función para exportar reportes (simulada)
+  // Función para exportar reportes a PDF
   const exportReport = (type) => {
-    const data = type === 'sales' ? filteredSales : inventoryReport;
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      JSON.stringify(data, null, 2);
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `reporte_${type}_${format(new Date(), 'yyyy-MM-dd')}.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      if (type === 'sales') {
+        const salesReportData = {
+          dateFrom,
+          dateTo,
+          stats: salesStats,
+          topProducts,
+          categoryStats
+        };
+        downloadSalesReport(salesReportData, businessInfo);
+      } else if (type === 'totalSales') {
+        const totalSalesReportData = {
+          dateFrom,
+          dateTo,
+          stats: salesStats,
+          sales: filteredSales
+        };
+        downloadTotalSalesReport(totalSalesReportData, businessInfo);
+      } else if (type === 'inventory') {
+        const inventoryReportData = {
+          selectedCategory,
+          stats: inventoryStats,
+          products: inventoryReport
+        };
+        downloadInventoryReport(inventoryReportData, businessInfo);
+      }
+    } catch (error) {
+      console.error('Error generando reporte PDF:', error);
+      // Fallback al método anterior si hay error
+      const data = type === 'sales' || type === 'totalSales' ? filteredSales : inventoryReport;
+      const csvContent = "data:text/csv;charset=utf-8," + 
+        JSON.stringify(data, null, 2);
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `reporte_${type}_${format(new Date(), 'yyyy-MM-dd')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -493,13 +526,30 @@ function Reports() {
           {/* Ventas por categoría */}
           <Grid item xs={12} md={6}>
             <Paper elevation={isMobile ? 0 : 2} sx={{ p: isMobile ? 1 : 2 }}>
-              <Typography 
-                variant={isMobile ? "subtitle1" : "h6"} 
-                gutterBottom
-                sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+              <Box 
+                display="flex" 
+                justifyContent="space-between" 
+                alignItems="center" 
+                mb={isMobile ? 1 : 2}
+                flexDirection={isMobile ? "column" : "row"}
+                gap={isMobile ? 1 : 0}
               >
-                Ventas por Categoría
-              </Typography>
+                <Typography 
+                  variant={isMobile ? "subtitle1" : "h6"}
+                  sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
+                >
+                  Ventas por Categoría
+                </Typography>
+                <Button
+                  size="small"
+                  startIcon={<Download fontSize={isMobile ? "small" : "medium"} />}
+                  onClick={() => exportReport('totalSales')}
+                  fullWidth={isMobile}
+                  variant="outlined"
+                >
+                  Ventas Totales
+                </Button>
+              </Box>
               <TableContainer>
                 <Table size={isMobile ? "small" : "small"}>
                   <TableHead>

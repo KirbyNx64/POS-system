@@ -8,7 +8,6 @@ import {
   getDocs, 
   query, 
   where, 
-  orderBy,
   onSnapshot,
   serverTimestamp
 } from 'firebase/firestore';
@@ -46,17 +45,28 @@ export function useFirestore(collectionName) {
       where('userId', '==', user.id)
       // orderBy('createdAt', 'desc') // Temporalmente comentado hasta que se cree el índice
     );
+    
+    console.log('📡 useFirestore: Query configurada para colección:', collectionName);
+    console.log('📡 useFirestore: Query:', q);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('📡 useFirestore: Datos recibidos:', snapshot.size, 'documentos');
+      console.log('📡 useFirestore: Datos recibidos:', snapshot.size, 'documentos para colección:', collectionName);
       const items = [];
       snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
+        const docData = { id: doc.id, ...doc.data() };
+        console.log('📡 useFirestore: Documento:', docData);
+        items.push(docData);
       });
+      console.log('📡 useFirestore: Items finales:', items);
       setData(items);
       setLoading(false);
     }, (error) => {
       console.error('❌ useFirestore: Error obteniendo datos:', error);
+      console.error('❌ useFirestore: Detalles del error:', {
+        message: error.message,
+        code: error.code,
+        collection: collectionName
+      });
       setError(error.message);
       setLoading(false);
     });
@@ -91,6 +101,7 @@ export function useFirestore(collectionName) {
       console.log('📝 useFirestore: Collection:', collectionName);
       console.log('📝 useFirestore: User ID:', user.id);
       console.log('📝 useFirestore: Datos:', documentData);
+      console.log('📝 useFirestore: Usuario completo:', user);
 
       setError(null);
       
@@ -99,21 +110,31 @@ export function useFirestore(collectionName) {
       const collectionRef = collection(db, collectionName);
       console.log('📝 useFirestore: CollectionRef:', collectionRef);
       
-      const docRef = await addDoc(collectionRef, {
+      const docData = {
         ...documentData,
         userId: user.id,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      };
+      
+      console.log('📝 useFirestore: Datos finales a guardar:', docData);
+      console.log('📝 useFirestore: Tipo de datos:', typeof docData);
+      console.log('📝 useFirestore: Claves del objeto:', Object.keys(docData));
+      console.log('📝 useFirestore: Verificando que userId existe:', docData.userId);
+      
+      const docRef = await addDoc(collectionRef, docData);
 
       console.log('✅ useFirestore: Documento agregado exitosamente:', docRef);
+      console.log('✅ useFirestore: ID del documento:', docRef.id);
       return docRef;
     } catch (error) {
       console.error('❌ useFirestore: Error agregando documento:', error);
       console.error('❌ useFirestore: Detalles del error:', {
         message: error.message,
         code: error.code,
-        stack: error.stack
+        stack: error.stack,
+        collection: collectionName,
+        user: user
       });
       setError(error.message);
       throw error;

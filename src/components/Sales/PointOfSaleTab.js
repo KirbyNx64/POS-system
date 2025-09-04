@@ -43,18 +43,23 @@ import { useProducts } from '../../hooks/useProducts';
 import { useSales } from '../../hooks/useSales';
 import { useApp } from '../../contexts/AppContext';
 import { useTaxSettings } from '../../hooks/useTaxSettings';
+import { useBusinessInfo } from '../../hooks/useBusinessInfo';
 import { displayCurrency } from '../../utils/formatPrice';
+import { downloadInvoice, printInvoice } from './InvoiceGenerator';
 
 function PointOfSaleTab() {
   const { state, dispatch } = useApp();
   const { products: firestoreProducts } = useProducts(); // Usar productos de Firestore
   const { processSale } = useSales(); // Hook para procesar ventas
   const { taxSettings } = useTaxSettings(); // Hook para configuración de impuestos desde Firebase
+  const { businessInfo } = useBusinessInfo(); // Hook para información del negocio
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('efectivo');
   const [processing, setProcessing] = useState(false);
+  const [saleCompleted, setSaleCompleted] = useState(false);
+  const [completedSaleData, setCompletedSaleData] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -157,19 +162,28 @@ function PointOfSaleTab() {
       // Procesar la venta usando useSales (esto actualizará el stock en Firestore)
       await processSale(saleData);
 
-      // Limpiar el carrito y cerrar el diálogo
+      // Guardar datos de la venta completada y mostrar estado de éxito
+      setCompletedSaleData(saleData);
+      setSaleCompleted(true);
+      setProcessing(false);
+      
+      // Limpiar el carrito
       dispatch({ type: 'CLEAR_CART' });
-      setCheckoutDialogOpen(false);
       setPaymentMethod('efectivo');
       
-      // Mostrar comprobante
-      alert('¡Venta completada exitosamente!');
     } catch (error) {
       console.error('Error al procesar la venta:', error);
       alert('Error al procesar la venta: ' + error.message);
     } finally {
       setProcessing(false);
     }
+  };
+
+  const closeCheckoutDialog = () => {
+    setCheckoutDialogOpen(false);
+    setSaleCompleted(false);
+    setCompletedSaleData(null);
+    setProcessing(false);
   };
 
   return (
@@ -315,6 +329,7 @@ function PointOfSaleTab() {
         >
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={isMobile ? 1 : 2}>
             <Typography variant={isMobile ? "subtitle1" : "h6"}>
+              <ShoppingCart sx={{ mr: 1, verticalAlign: 'middle' }} />
               Carrito de Ventas
             </Typography>
             {state.cart.length > 0 && (
@@ -337,7 +352,7 @@ function PointOfSaleTab() {
           ) : (
             <>
               {/* Artículos en el carrito */}
-              <List>
+              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {state.cart.map((item) => (
                   <ListItem key={item.id} divider sx={{ pr: 1, py: isMobile ? 1 : 2 }}>
                     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -483,60 +498,118 @@ function PointOfSaleTab() {
       <Dialog open={checkoutDialogOpen} onClose={() => setCheckoutDialogOpen(false)}>
         <DialogTitle>Confirmar Venta</DialogTitle>
         <DialogContent>
-          <Box mb={2}>
-            <Typography variant="h6" gutterBottom>
-              Resumen de la Venta
-            </Typography>
-            {state.cart.map((item) => (
-              <Box key={item.id} display="flex" justifyContent="space-between" mb={1}>
-                <Typography>
-                  {item.name} x{item.quantity}
+          {!saleCompleted ? (
+            <>
+              <Box mb={2}>
+                <Typography variant="h6" gutterBottom>
+                  Resumen de la Venta
                 </Typography>
-                <Typography>
-                  {displayCurrency(item.price * item.quantity)}
-                </Typography>
+                {state.cart.map((item) => (
+                  <Box key={item.id} display="flex" justifyContent="space-between" mb={1}>
+                    <Typography>
+                      {item.name} x{item.quantity}
+                    </Typography>
+                    <Typography>
+                      {displayCurrency(item.price * item.quantity)}
+                    </Typography>
+                  </Box>
+                ))}
+                <Divider sx={{ my: 1 }} />
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="h6">Total:</Typography>
+                  <Typography variant="h6" color="primary">
+                    {displayCurrency(total)}
+                  </Typography>
+                </Box>
               </Box>
-            ))}
-            <Divider sx={{ my: 1 }} />
-            <Box display="flex" justifyContent="space-between">
-              <Typography variant="h6">Total:</Typography>
-              <Typography variant="h6" color="primary">
-                {displayCurrency(total)}
+
+              <FormControl fullWidth>
+                <InputLabel>Método de Pago</InputLabel>
+                <Select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  label="Método de Pago"
+                >
+                  <MenuItem value="efectivo">Efectivo</MenuItem>
+                  <MenuItem value="tarjeta">Tarjeta</MenuItem>
+                  <MenuItem value="transferencia">Transferencia</MenuItem>
+                </Select>
+              </FormControl>
+
+              {processing && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Procesando venta...
+                </Alert>
+              )}
+            </>
+          ) : (
+            /* Estado de venta completada */
+            <Box textAlign="center" py={3}>
+              <Alert severity="success" sx={{ mb: 3 }}>
+                <Typography variant="h6">
+                  ¡Venta completada exitosamente!
+                </Typography>
+              </Alert>
+              
+              <Typography variant="h6" gutterBottom>
+                Total de la venta: {displayCurrency(completedSaleData?.total || 0)}
               </Typography>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Método de pago: {completedSaleData?.paymentMethod || 'Efectivo'}
+              </Typography>
+
+              {/* Botones de factura después de la venta */}
+              <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<Receipt />}
+                  onClick={() => {
+                    downloadInvoice(completedSaleData, businessInfo);
+                  }}
+                >
+                  DESCARGAR FACTURA
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<Receipt />}
+                  onClick={() => {
+                    printInvoice(completedSaleData, businessInfo);
+                  }}
+                >
+                  IMPRIMIR FACTURA
+                </Button>
+              </Box>
             </Box>
-          </Box>
-
-          <FormControl fullWidth>
-            <InputLabel>Método de Pago</InputLabel>
-            <Select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              label="Método de Pago"
-            >
-              <MenuItem value="efectivo">Efectivo</MenuItem>
-              <MenuItem value="tarjeta">Tarjeta</MenuItem>
-              <MenuItem value="transferencia">Transferencia</MenuItem>
-            </Select>
-          </FormControl>
-
-          {processing && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Procesando venta...
-            </Alert>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCheckoutDialogOpen(false)} disabled={processing}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={completeSale}
-            variant="contained"
-            startIcon={<Receipt />}
-            disabled={processing}
-          >
-            {processing ? 'Procesando...' : 'Confirmar Venta'}
-          </Button>
+          {!saleCompleted ? (
+            <>
+              <Button onClick={() => setCheckoutDialogOpen(false)} disabled={processing}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={completeSale}
+                variant="contained"
+                startIcon={<Receipt />}
+                disabled={processing}
+              >
+                {processing ? 'Procesando...' : 'Confirmar Venta'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={closeCheckoutDialog}
+              variant="contained"
+              color="primary"
+              fullWidth
+            >
+              Finalizar
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Grid>

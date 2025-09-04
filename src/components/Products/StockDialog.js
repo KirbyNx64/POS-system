@@ -21,27 +21,37 @@ import {
   InputAdornment
 } from '@mui/material';
 import { Add, Remove, Inventory } from '@mui/icons-material';
+import { useProducts } from '../../hooks/useProducts';
+import { useFirestore } from '../../hooks/useFirestore';
 import { useApp } from '../../contexts/AppContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 function StockDialog({ open, onClose, product }) {
-  const { state, dispatch } = useApp();
+  const { state } = useApp();
+  const { updateStock } = useProducts();
+  const { data: inventoryMovements } = useFirestore('inventario');
   const [movementType, setMovementType] = useState('entrada');
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
+  const [userName, setUserName] = useState(state.user?.name || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   if (!product) return null;
 
-  // Obtener movimientos de inventario para este producto
-  const productMovements = state.inventory
+  // Obtener movimientos de inventario para este producto desde Firebase
+  const productMovements = inventoryMovements
     .filter(movement => movement.productId === product.id)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 10);
 
-  const handleSubmit = (e) => {
+  // Debug: Log de movimientos
+  console.log('🔍 StockDialog: Movimientos de inventario totales:', inventoryMovements.length);
+  console.log('🔍 StockDialog: Movimientos para producto', product.id, ':', productMovements.length);
+  console.log('🔍 StockDialog: Movimientos filtrados:', productMovements);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -56,6 +66,11 @@ function StockDialog({ open, onClose, product }) {
       return;
     }
 
+    if (!userName.trim()) {
+      setError('El nombre del usuario es requerido');
+      return;
+    }
+
     // Para salidas, verificar que hay suficiente stock
     if (movementType === 'salida' && qty > product.stock) {
       setError(`Stock insuficiente. Stock actual: ${product.stock}`);
@@ -64,24 +79,20 @@ function StockDialog({ open, onClose, product }) {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const movementQuantity = movementType === 'entrada' ? qty : -qty;
+    try {
+      // Usar la función updateStock del hook useProducts que se conecta a Firebase
+      await updateStock(product.id, qty, movementType, reason.trim(), userName.trim());
       
-      dispatch({
-        type: 'UPDATE_STOCK',
-        payload: {
-          productId: product.id,
-          quantity: movementQuantity,
-          type: movementType,
-          reason: reason.trim()
-        }
-      });
-
       setLoading(false);
       setQuantity('');
       setReason('');
+      setUserName(state.user?.name || '');
       onClose();
-    }, 500);
+    } catch (error) {
+      console.error('Error actualizando stock:', error);
+      setError(error.message || 'Error al actualizar el stock');
+      setLoading(false);
+    }
   };
 
   const getMovementColor = (type) => {
@@ -180,6 +191,17 @@ function StockDialog({ open, onClose, product }) {
                   />
                 </Grid>
 
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Usuario responsable"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="Nombre del usuario que realiza el movimiento"
+                    required
+                  />
+                </Grid>
+
                 {error && (
                   <Grid item xs={12}>
                     <Alert severity="error">{error}</Alert>
@@ -221,7 +243,7 @@ function StockDialog({ open, onClose, product }) {
                             size="small"
                           />
                           <Typography variant="body2" color="text.secondary">
-                            {format(new Date(movement.date), 'dd/MM/yyyy HH:mm', { locale: es })}
+                            {format(new Date(movement.date || movement.createdAt), 'dd/MM/yyyy HH:mm', { locale: es })}
                           </Typography>
                         </Box>
                       }
@@ -231,8 +253,13 @@ function StockDialog({ open, onClose, product }) {
                             {movement.reason}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            Usuario: {state.user?.name || 'Sistema'}
+                            Usuario: {movement.userName || 'Sistema'}
                           </Typography>
+                          {movement.previousStock !== undefined && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Stock anterior: {movement.previousStock} → Nuevo: {movement.newStock}
+                            </Typography>
+                          )}
                         </Box>
                       }
                     />

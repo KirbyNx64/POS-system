@@ -315,13 +315,32 @@ function Products() {
                     sx={{ 
                       fontSize: isMobile ? '0.875rem' : '1.25rem',
                       fontWeight: isMobile ? 'bold' : 'normal',
-                      lineHeight: isMobile ? 1.2 : 1.3
+                      lineHeight: isMobile ? 1.2 : 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      minHeight: isMobile ? '2.1rem' : '3.25rem' // Altura fija para 2 líneas
                     }}
                   >
                     {product.name}
                   </Typography>
                   {!isMobile && (
-                    <Typography variant="body2" color="text.secondary" paragraph>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      paragraph
+                      sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minHeight: '2.5rem', // Altura fija para 2 líneas
+                        marginBottom: 1
+                      }}
+                    >
                       {product.description || 'Sin descripción'}
                     </Typography>
                   )}

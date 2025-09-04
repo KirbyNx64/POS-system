@@ -39,6 +39,7 @@ import {
 import { useProducts } from '../../hooks/useProducts';
 import { useSales } from '../../hooks/useSales';
 import { useApp } from '../../contexts/AppContext';
+import { useTaxSettings } from '../../hooks/useTaxSettings';
 import { useBusinessInfo } from '../../hooks/useBusinessInfo';
 import { displayCurrency } from '../../utils/formatPrice';
 import { downloadInvoice, printInvoice } from './InvoiceGenerator';
@@ -47,6 +48,7 @@ function CashierTab() {
   const { state, dispatch } = useApp();
   const { products: firestoreProducts } = useProducts(); // Usar productos de Firestore
   const { processSale } = useSales(); // Hook para procesar ventas
+  const { taxSettings } = useTaxSettings(); // Hook para configuración de impuestos desde Firebase
   const { businessInfo } = useBusinessInfo(); // Hook para información del negocio
   const [barcodeInput, setBarcodeInput] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -54,6 +56,8 @@ function CashierTab() {
   const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('efectivo');
   const [processing, setProcessing] = useState(false);
+  const [saleCompleted, setSaleCompleted] = useState(false);
+  const [completedSaleData, setCompletedSaleData] = useState(null);
   const [lastScannedProduct, setLastScannedProduct] = useState(null);
   const barcodeInputRef = useRef(null);
   const theme = useTheme();
@@ -61,7 +65,7 @@ function CashierTab() {
 
   // Calcular totales del carrito
   const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = state.taxSettings.enabled ? state.taxSettings.rate : 0;
+  const taxRate = taxSettings.enabled ? taxSettings.rate : 0;
   const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
@@ -226,22 +230,17 @@ function CashierTab() {
       // Procesar la venta usando useSales (esto actualizará el stock en Firestore)
       await processSale(saleData);
 
-      // Limpiar el carrito y cerrar el diálogo
+      // Guardar datos de la venta completada y mostrar estado de éxito
+      setCompletedSaleData(saleData);
+      setSaleCompleted(true);
+      setProcessing(false);
+      
+      // Limpiar el carrito
       dispatch({ type: 'CLEAR_CART' });
-      setCheckoutDialogOpen(false);
       setPaymentMethod('efectivo');
       setLastScannedProduct(null);
       
-      // Generar factura automáticamente
-      try {
-        downloadInvoice(saleData, businessInfo);
-      } catch (invoiceError) {
-        console.error('Error generando factura:', invoiceError);
-        // No fallar la venta si hay error en la factura
-      }
-      
-      // Mostrar comprobante y mantener focus en código de barras (solo en desktop)
-      alert(`¡Venta completada!\nTotal: ${displayCurrency(total)}\nMétodo: ${paymentMethod}\n\nLa factura se ha descargado automáticamente.`);
+      // Mantener focus en código de barras (solo en desktop)
       
       if (!isMobile) {
         setTimeout(() => {
@@ -256,6 +255,13 @@ function CashierTab() {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const closeCheckoutDialog = () => {
+    setCheckoutDialogOpen(false);
+    setSaleCompleted(false);
+    setCompletedSaleData(null);
+    setProcessing(false);
   };
 
   return (
@@ -395,7 +401,7 @@ function CashierTab() {
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">
               <ShoppingCart sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Carrito ({state.cart.length})
+              Carrito de Ventas
             </Typography>
             {state.cart.length > 0 && (
               <IconButton onClick={clearCart} color="error" size="small">
@@ -419,18 +425,43 @@ function CashierTab() {
               {/* Artículos en el carrito */}
               <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {state.cart.map((item) => (
-                  <ListItem key={item.id} divider sx={{ pr: 1, py: 2 }}>
+                  <ListItem key={item.id} divider sx={{ pr: 1, py: isMobile ? 1 : 2 }}>
                     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
                       {/* Información del producto */}
-                      <Box mb={1.5}>
-                        <Typography variant="body2" fontWeight="bold" sx={{ wordBreak: 'break-word', mb: 0.5 }}>
+                      <Box mb={isMobile ? 1 : 1.5}>
+                        <Typography 
+                          variant={isMobile ? "caption" : "body2"} 
+                          fontWeight="bold" 
+                          sx={{ 
+                            wordBreak: 'break-word', 
+                            mb: isMobile ? 0.5 : 0.5,
+                            fontSize: isMobile ? '0.75rem' : '0.875rem',
+                            display: 'block'
+                          }}
+                        >
                           {item.name}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ 
+                            fontSize: isMobile ? '0.65rem' : '0.75rem',
+                            display: 'block',
+                            mt: isMobile ? 0.25 : 0
+                          }}
+                        >
                           {displayCurrency(item.price)} c/u
                         </Typography>
                         {item.barcode && (
-                          <Typography variant="caption" color="text.secondary" display="block">
+                          <Typography 
+                            variant="caption" 
+                            color="text.secondary" 
+                            display="block"
+                            sx={{ 
+                              fontSize: isMobile ? '0.65rem' : '0.75rem',
+                              mt: isMobile ? 0.25 : 0
+                            }}
+                          >
                             Código: {item.barcode}
                           </Typography>
                         )}
@@ -440,35 +471,64 @@ function CashierTab() {
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Box display="flex" alignItems="center">
                           <IconButton
-                            size="small"
+                            size={isMobile ? "small" : "small"}
                             onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                            sx={{ bgcolor: 'action.hover', mr: 1 }}
+                            sx={{ 
+                              bgcolor: 'action.hover', 
+                              mr: isMobile ? 0.5 : 1,
+                              minWidth: isMobile ? '28px' : '32px',
+                              height: isMobile ? '28px' : '32px'
+                            }}
                           >
-                            <Remove fontSize="small" />
+                            <Remove fontSize={isMobile ? "small" : "small"} />
                           </IconButton>
-                          <Typography sx={{ mx: 1, minWidth: 30, textAlign: 'center', fontWeight: 'bold' }}>
+                          <Typography 
+                            sx={{ 
+                              mx: isMobile ? 0.5 : 1, 
+                              minWidth: isMobile ? 20 : 30, 
+                              textAlign: 'center', 
+                              fontWeight: 'bold',
+                              fontSize: isMobile ? '0.75rem' : '0.875rem'
+                            }}
+                          >
                             {item.quantity}
                           </Typography>
                           <IconButton
-                            size="small"
+                            size={isMobile ? "small" : "small"}
                             onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                            sx={{ bgcolor: 'action.hover', ml: 1 }}
+                            sx={{ 
+                              bgcolor: 'action.hover', 
+                              ml: isMobile ? 0.5 : 1,
+                              minWidth: isMobile ? '28px' : '32px',
+                              height: isMobile ? '28px' : '32px'
+                            }}
                           >
-                            <Add fontSize="small" />
+                            <Add fontSize={isMobile ? "small" : "small"} />
                           </IconButton>
                         </Box>
                         
                         <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="body2" fontWeight="bold" color="primary">
+                          <Typography 
+                            variant={isMobile ? "caption" : "body2"} 
+                            fontWeight="bold" 
+                            color="primary"
+                            sx={{ 
+                              fontSize: isMobile ? '0.75rem' : '0.875rem'
+                            }}
+                          >
                             {displayCurrency(item.price * item.quantity)}
                           </Typography>
                           <IconButton
-                            size="small"
+                            size={isMobile ? "small" : "small"}
                             onClick={() => removeFromCart(item.id)}
                             color="error"
-                            sx={{ ml: 1 }}
+                            sx={{ 
+                              ml: isMobile ? 0.5 : 1,
+                              minWidth: isMobile ? '28px' : '32px',
+                              height: isMobile ? '28px' : '32px'
+                            }}
                           >
-                            <Delete fontSize="small" />
+                            <Delete fontSize={isMobile ? "small" : "small"} />
                           </IconButton>
                         </Box>
                       </Box>
@@ -485,9 +545,9 @@ function CashierTab() {
                   <Typography>Subtotal:</Typography>
                   <Typography>{displayCurrency(subtotal)}</Typography>
                 </Box>
-                {state.taxSettings.enabled && (
+                {taxSettings.enabled && (
                   <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography>{state.taxSettings.name} ({(state.taxSettings.rate * 100).toFixed(0)}%):</Typography>
+                    <Typography>{taxSettings.name} ({(taxSettings.rate * 100).toFixed(0)}%):</Typography>
                     <Typography>{displayCurrency(tax)}</Typography>
                   </Box>
                 )}
@@ -518,30 +578,32 @@ function CashierTab() {
       <Dialog open={checkoutDialogOpen} onClose={() => setCheckoutDialogOpen(false)}>
         <DialogTitle>Confirmar Venta</DialogTitle>
         <DialogContent>
-          <Box mb={2}>
-            <Typography variant="h6" gutterBottom>
-              Resumen de la Venta
-            </Typography>
-            {state.cart.map((item) => (
-              <Box key={item.id} display="flex" justifyContent="space-between" mb={1}>
-                <Typography>
-                  {item.name} x{item.quantity}
+          {!saleCompleted ? (
+            <>
+              <Box mb={2}>
+                <Typography variant="h6" gutterBottom>
+                  Resumen de la Venta
                 </Typography>
-                <Typography>
-                  {displayCurrency(item.price * item.quantity)}
-                </Typography>
+                {state.cart.map((item) => (
+                  <Box key={item.id} display="flex" justifyContent="space-between" mb={1}>
+                    <Typography>
+                      {item.name} x{item.quantity}
+                    </Typography>
+                    <Typography>
+                      {displayCurrency(item.price * item.quantity)}
+                    </Typography>
+                  </Box>
+                ))}
+                <Divider sx={{ my: 1 }} />
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="h6">Total:</Typography>
+                  <Typography variant="h6" color="primary">
+                    {displayCurrency(total)}
+                  </Typography>
+                </Box>
               </Box>
-            ))}
-            <Divider sx={{ my: 1 }} />
-            <Box display="flex" justifyContent="space-between">
-              <Typography variant="h6">Total:</Typography>
-              <Typography variant="h6" color="primary">
-                {displayCurrency(total)}
-              </Typography>
-            </Box>
-          </Box>
 
-          <FormControl fullWidth>
+              <FormControl fullWidth>
             <InputLabel>Método de Pago</InputLabel>
             <Select
               value={paymentMethod}
@@ -554,78 +616,81 @@ function CashierTab() {
             </Select>
           </FormControl>
 
-          {processing && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Procesando venta...
-            </Alert>
-          )}
+              {processing && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Procesando venta...
+                </Alert>
+              )}
 
-          {/* Opciones de factura */}
-          <Box mt={3}>
-            <Typography variant="subtitle2" gutterBottom>
-              Opciones de Factura:
-            </Typography>
-            
-            {/* Información del negocio para la factura */}
-            {businessInfo && businessInfo.name && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  <strong>Negocio:</strong> {businessInfo.name}
-                  {businessInfo.address && ` - ${businessInfo.address}`}
+            </>
+          ) : (
+            /* Estado de venta completada */
+            <Box textAlign="center" py={3}>
+              <Alert severity="success" sx={{ mb: 3 }}>
+                <Typography variant="h6">
+                  ¡Venta completada exitosamente!
                 </Typography>
               </Alert>
-            )}
-            
-            <Box display="flex" gap={1} flexWrap="wrap">
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  const saleData = {
-                    items: state.cart,
-                    subtotal,
-                    tax,
-                    total,
-                    paymentMethod
-                  };
-                  downloadInvoice(saleData, businessInfo);
-                }}
-                disabled={state.cart.length === 0}
-              >
-                Descargar Factura
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  const saleData = {
-                    items: state.cart,
-                    subtotal,
-                    tax,
-                    total,
-                    paymentMethod
-                  };
-                  printInvoice(saleData, businessInfo);
-                }}
-                disabled={state.cart.length === 0}
-              >
-                Imprimir Factura
-              </Button>
+              
+              <Typography variant="h6" gutterBottom>
+                Total de la venta: {displayCurrency(completedSaleData?.total || 0)}
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Método de pago: {completedSaleData?.paymentMethod || 'Efectivo'}
+              </Typography>
+
+              {/* Botones de factura después de la venta */}
+              <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<Receipt />}
+                  onClick={() => {
+                    downloadInvoice(completedSaleData, businessInfo);
+                  }}
+                >
+                  DESCARGAR FACTURA
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<Receipt />}
+                  onClick={() => {
+                    printInvoice(completedSaleData, businessInfo);
+                  }}
+                >
+                  IMPRIMIR FACTURA
+                </Button>
+              </Box>
             </Box>
-          </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCheckoutDialogOpen(false)} disabled={processing}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={completeSale}
-            variant="contained"
-            startIcon={<Receipt />}
-            disabled={processing}
-          >
-            {processing ? 'Procesando...' : 'Confirmar Venta'}
-          </Button>
+          {!saleCompleted ? (
+            <>
+              <Button onClick={() => setCheckoutDialogOpen(false)} disabled={processing}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={completeSale}
+                variant="contained"
+                startIcon={<Receipt />}
+                disabled={processing}
+              >
+                {processing ? 'Procesando...' : 'Confirmar Venta'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={closeCheckoutDialog}
+              variant="contained"
+              color="primary"
+              fullWidth
+            >
+              Finalizar
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Grid>
