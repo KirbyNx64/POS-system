@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import Login from './Auth/Login';
+import EmailVerificationGuard from './Auth/EmailVerificationGuard';
 import Dashboard from './Dashboard/Dashboard';
 import Products from './Products/Products';
 import Sales from './Sales/Sales';
@@ -36,20 +37,25 @@ function AppRouter() {
     return <Login />;
   }
 
+  // Si hay usuario pero no está verificado, el EmailVerificationGuard lo manejará
+  // No hacer nada aquí, dejar que el guard decida qué mostrar
+
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/sales" element={<Sales />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/firestore-test" element={<FirestoreTest />} />
-        <Route path="/firebase-debug" element={<FirebaseDebug />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </Layout>
+    <EmailVerificationGuard>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/sales" element={<Sales />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/firestore-test" element={<FirestoreTest />} />
+          <Route path="/firebase-debug" element={<FirebaseDebug />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Layout>
+    </EmailVerificationGuard>
   );
 }
 
