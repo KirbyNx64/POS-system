@@ -30,7 +30,11 @@ import {
   useTheme,
   Card,
   CardContent,
-  CardActions
+  CardActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Receipt,
@@ -39,9 +43,15 @@ import {
   Search,
   FilterList,
   Print,
-  Visibility
+  Visibility,
+  Edit,
+  Add,
+  Remove,
+  Delete
 } from '@mui/icons-material';
 import { useSales } from '../../hooks/useSales';
+import { useProducts } from '../../hooks/useProducts';
+import { useTaxSettings } from '../../hooks/useTaxSettings';
 import { format, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { displayCurrency } from '../../utils/formatPrice';
@@ -216,13 +226,600 @@ function SaleDetailDialog({ open, onClose, sale }) {
   );
 }
 
+function EditSaleDialog({ open, onClose, sale, onSave }) {
+  const { allProducts } = useProducts();
+  const { taxSettings } = useTaxSettings();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  const [editedItems, setEditedItems] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [status, setStatus] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [searchAvailableProducts, setSearchAvailableProducts] = useState('');
+  const [searchCurrentProducts, setSearchCurrentProducts] = useState('');
+  
+  // Inicializar datos cuando se abre el diálogo
+  React.useEffect(() => {
+    if (sale && open) {
+      setEditedItems([...sale.items]);
+      setPaymentMethod(sale.paymentMethod || 'efectivo');
+      setStatus(sale.status || 'completed');
+    }
+  }, [sale, open]);
+
+  if (!sale) return null;
+
+  // Calcular totales
+  const subtotal = editedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const taxRate = taxSettings.enabled ? taxSettings.rate : 0;
+  const tax = subtotal * taxRate;
+  const total = subtotal + tax;
+
+  // Filtrar productos disponibles
+  const filteredAvailableProducts = allProducts.filter(p => 
+    p.active && 
+    p.stock > 0 &&
+    p.name.toLowerCase().includes(searchAvailableProducts.toLowerCase())
+  );
+
+  // Filtrar productos en la venta
+  const filteredCurrentProducts = editedItems.filter(item =>
+    item.name.toLowerCase().includes(searchCurrentProducts.toLowerCase())
+  );
+
+  const handleQuantityChange = (index, newQuantity) => {
+    if (newQuantity < 0) return;
+    
+    const updatedItems = [...editedItems];
+    updatedItems[index] = { ...updatedItems[index], quantity: newQuantity };
+    setEditedItems(updatedItems);
+  };
+
+  const handleRemoveItem = (index) => {
+    const updatedItems = editedItems.filter((_, i) => i !== index);
+    setEditedItems(updatedItems);
+  };
+
+  const handleAddProduct = (product) => {
+    const existingItemIndex = editedItems.findIndex(item => item.id === product.id);
+    
+    if (existingItemIndex >= 0) {
+      // Si el producto ya existe, aumentar la cantidad
+      handleQuantityChange(existingItemIndex, editedItems[existingItemIndex].quantity + 1);
+    } else {
+      // Si es un producto nuevo, agregarlo
+      setEditedItems([...editedItems, {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1
+      }]);
+    }
+  };
+
+  const handleSave = async () => {
+    if (editedItems.length === 0) {
+      alert('La venta debe tener al menos un producto');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updatedSaleData = {
+        items: editedItems,
+        subtotal,
+        tax,
+        total,
+        paymentMethod,
+        status
+      };
+
+      await onSave(sale.id, updatedSaleData);
+      onClose();
+    } catch (error) {
+      console.error('Error guardando venta:', error);
+      alert('Error al guardar la venta: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="lg" 
+      fullWidth
+      fullScreen={isMobile}
+    >
+      <DialogTitle sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 1 : 2 }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Box display="flex" alignItems="center">
+            <Edit sx={{ mr: 1, fontSize: isMobile ? '1.2rem' : '1.5rem' }} />
+            <Typography variant={isMobile ? "h6" : "h5"}>
+              Editar Venta #{sale.id.slice(-6)}
+            </Typography>
+          </Box>
+          {isMobile && (
+            <IconButton onClick={onClose} size="small">
+              <Delete />
+            </IconButton>
+          )}
+        </Box>
+      </DialogTitle>
+      <DialogContent sx={{ p: isMobile ? 2 : 3, pt: isMobile ? 1 : 2 }}>
+        {isMobile ? (
+          // Diseño móvil con tabs o secciones
+          <Box>
+            {/* Configuración de la venta - Primero en móvil */}
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                Configuración de la Venta
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Método de Pago</InputLabel>
+                    <Select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      label="Método de Pago"
+                    >
+                      <MenuItem value="efectivo">Efectivo</MenuItem>
+                      <MenuItem value="tarjeta">Tarjeta</MenuItem>
+                      <MenuItem value="transferencia">Transferencia</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Estado</InputLabel>
+                    <Select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      label="Estado"
+                    >
+                      <MenuItem value="completed">Completada</MenuItem>
+                      <MenuItem value="pending">Pendiente</MenuItem>
+                      <MenuItem value="cancelled">Cancelada</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Productos en la venta - Segundo en móvil */}
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                Productos en la Venta ({editedItems.length})
+              </Typography>
+              
+              {/* Barra de búsqueda para productos en la venta */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Buscar productos en la venta..."
+                value={searchCurrentProducts}
+                onChange={(e) => setSearchCurrentProducts(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: <Search sx={{ mr: 1, color: 'text.secondary', fontSize: '1rem' }} />,
+                }}
+              />
+              
+              <Box sx={{ maxHeight: 250, overflow: 'auto' }}>
+                {filteredCurrentProducts.map((item, index) => {
+                  // Encontrar el índice real en editedItems
+                  const realIndex = editedItems.findIndex(editedItem => 
+                    editedItem.id === item.id && editedItem.name === item.name
+                  );
+                  return (
+                  <Card key={`${item.id}-${index}`} variant="outlined" sx={{ mb: 1 }}>
+                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Box sx={{ flex: 1, mr: 1 }}>
+                          <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.875rem' }}>
+                            {item.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            {displayCurrency(item.price)} c/u
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleRemoveItem(realIndex)}
+                          sx={{ minWidth: '32px', height: '32px' }}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleQuantityChange(realIndex, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                            sx={{ minWidth: '32px', height: '32px' }}
+                          >
+                            <Remove fontSize="small" />
+                          </IconButton>
+                          <Typography variant="body2" sx={{ minWidth: 30, textAlign: 'center', fontWeight: 'bold' }}>
+                            {item.quantity}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleQuantityChange(realIndex, item.quantity + 1)}
+                            sx={{ minWidth: '32px', height: '32px' }}
+                          >
+                            <Add fontSize="small" />
+                          </IconButton>
+                        </Box>
+                        <Typography variant="body2" color="primary" fontWeight="bold" sx={{ fontSize: '0.875rem' }}>
+                          {displayCurrency(item.price * item.quantity)}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                  );
+                })}
+                
+                {filteredCurrentProducts.length === 0 && editedItems.length > 0 && (
+                  <Box textAlign="center" py={3}>
+                    <Typography variant="body2" color="text.secondary">
+                      No se encontraron productos con "{searchCurrentProducts}"
+                    </Typography>
+                  </Box>
+                )}
+                
+                {editedItems.length === 0 && (
+                  <Box textAlign="center" py={3}>
+                    <Typography variant="body2" color="text.secondary">
+                      No hay productos en la venta
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+
+            {/* Productos disponibles - Tercero en móvil */}
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                Agregar Productos
+              </Typography>
+              
+              {/* Barra de búsqueda para productos disponibles */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Buscar productos disponibles..."
+                value={searchAvailableProducts}
+                onChange={(e) => setSearchAvailableProducts(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: <Search sx={{ mr: 1, color: 'text.secondary', fontSize: '1rem' }} />,
+                }}
+              />
+              
+              <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+                {filteredAvailableProducts.map((product) => (
+                  <Box 
+                    key={product.id}
+                    display="flex" 
+                    justifyContent="space-between" 
+                    alignItems="center"
+                    p={1.5}
+                    borderBottom="1px solid"
+                    borderColor="divider"
+                    sx={{ '&:last-child': { borderBottom: 'none' } }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.875rem' }}>
+                        {product.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        {displayCurrency(product.price)} - Stock: {product.stock}
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Add fontSize="small" />}
+                      onClick={() => handleAddProduct(product)}
+                      disabled={product.stock <= 0}
+                      sx={{ fontSize: '0.75rem', minHeight: '32px' }}
+                    >
+                      Agregar
+                    </Button>
+                  </Box>
+                ))}
+                
+                {filteredAvailableProducts.length === 0 && (
+                  <Box textAlign="center" py={3}>
+                    <Typography variant="body2" color="text.secondary">
+                      {searchAvailableProducts ? 
+                        `No se encontraron productos con "${searchAvailableProducts}"` : 
+                        'No hay productos disponibles'
+                      }
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+
+            {/* Resumen de totales */}
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                Resumen de la Venta
+              </Typography>
+              <Box display="flex" justifyContent="space-between" mb={1}>
+                <Typography variant="body2">Subtotal:</Typography>
+                <Typography variant="body2">{displayCurrency(subtotal)}</Typography>
+              </Box>
+              {taxSettings.enabled && (
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2">
+                    {taxSettings.name} ({(taxSettings.rate * 100).toFixed(0)}%):
+                  </Typography>
+                  <Typography variant="body2">{displayCurrency(tax)}</Typography>
+                </Box>
+              )}
+              <Divider sx={{ my: 1 }} />
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="subtitle1" fontWeight="bold">Total:</Typography>
+                <Typography variant="subtitle1" color="primary" fontWeight="bold">
+                  {displayCurrency(total)}
+                </Typography>
+              </Box>
+            </Paper>
+          </Box>
+        ) : (
+          // Diseño desktop original
+          <Grid container spacing={2}>
+            {/* Productos disponibles */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                Productos Disponibles
+              </Typography>
+              
+              {/* Barra de búsqueda para productos disponibles */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Buscar productos disponibles..."
+                value={searchAvailableProducts}
+                onChange={(e) => setSearchAvailableProducts(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
+              />
+              
+              <Box sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+                {filteredAvailableProducts.map((product) => (
+                  <Box 
+                    key={product.id}
+                    display="flex" 
+                    justifyContent="space-between" 
+                    alignItems="center"
+                    p={1}
+                    borderBottom="1px solid"
+                    borderColor="divider"
+                  >
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold">
+                        {product.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {displayCurrency(product.price)} - Stock: {product.stock}
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Add />}
+                      onClick={() => handleAddProduct(product)}
+                      disabled={product.stock <= 0}
+                    >
+                      Agregar
+                    </Button>
+                  </Box>
+                ))}
+                
+                {filteredAvailableProducts.length === 0 && (
+                  <Box textAlign="center" py={3}>
+                    <Typography variant="body2" color="text.secondary">
+                      {searchAvailableProducts ? 
+                        `No se encontraron productos con "${searchAvailableProducts}"` : 
+                        'No hay productos disponibles'
+                      }
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Grid>
+
+            {/* Productos en la venta */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                Productos en la Venta
+              </Typography>
+              
+              {/* Barra de búsqueda para productos en la venta */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Buscar productos en la venta..."
+                value={searchCurrentProducts}
+                onChange={(e) => setSearchCurrentProducts(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
+              />
+              
+              <Box sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+                {filteredCurrentProducts.map((item, index) => {
+                  // Encontrar el índice real en editedItems
+                  const realIndex = editedItems.findIndex(editedItem => 
+                    editedItem.id === item.id && editedItem.name === item.name
+                  );
+                  return (
+                  <Box 
+                    key={`${item.id}-${index}`}
+                    display="flex" 
+                    justifyContent="space-between" 
+                    alignItems="center"
+                    p={1}
+                    borderBottom="1px solid"
+                    borderColor="divider"
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" fontWeight="bold">
+                        {item.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {displayCurrency(item.price)} c/u
+                      </Typography>
+                    </Box>
+                    
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleQuantityChange(realIndex, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                      >
+                        <Remove />
+                      </IconButton>
+                      <Typography variant="body2" sx={{ minWidth: 30, textAlign: 'center' }}>
+                        {item.quantity}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleQuantityChange(realIndex, item.quantity + 1)}
+                      >
+                        <Add />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemoveItem(realIndex)}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  );
+                })}
+                
+                {filteredCurrentProducts.length === 0 && editedItems.length > 0 && (
+                  <Box textAlign="center" py={3}>
+                    <Typography variant="body2" color="text.secondary">
+                      No se encontraron productos con "{searchCurrentProducts}"
+                    </Typography>
+                  </Box>
+                )}
+                
+                {editedItems.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                    No hay productos en la venta
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+
+            {/* Configuración de la venta */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Método de Pago</InputLabel>
+                <Select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  label="Método de Pago"
+                >
+                  <MenuItem value="efectivo">Efectivo</MenuItem>
+                  <MenuItem value="tarjeta">Tarjeta</MenuItem>
+                  <MenuItem value="transferencia">Transferencia</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  label="Estado"
+                >
+                  <MenuItem value="completed">Completada</MenuItem>
+                  <MenuItem value="pending">Pendiente</MenuItem>
+                  <MenuItem value="cancelled">Cancelada</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Resumen de totales */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 1 }} />
+              <Box display="flex" justifyContent="space-between" mb={1}>
+                <Typography>Subtotal:</Typography>
+                <Typography>{displayCurrency(subtotal)}</Typography>
+              </Box>
+              {taxSettings.enabled && (
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography>
+                    {taxSettings.name} ({(taxSettings.rate * 100).toFixed(0)}%):
+                  </Typography>
+                  <Typography>{displayCurrency(tax)}</Typography>
+                </Box>
+              )}
+              <Divider sx={{ my: 1 }} />
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="h6">Total:</Typography>
+                <Typography variant="h6" color="primary">
+                  {displayCurrency(total)}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ p: isMobile ? 2 : 3, pt: isMobile ? 1 : 2 }}>
+        <Button 
+          onClick={onClose}
+          disabled={saving}
+          size={isMobile ? "medium" : "medium"}
+          fullWidth={isMobile}
+          sx={{ fontSize: isMobile ? '0.875rem' : '0.875rem' }}
+        >
+          Cancelar
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleSave}
+          disabled={saving || editedItems.length === 0}
+          size={isMobile ? "medium" : "medium"}
+          fullWidth={isMobile}
+          sx={{ fontSize: isMobile ? '0.875rem' : '0.875rem' }}
+        >
+          {saving ? 'Guardando...' : 'Guardar Cambios'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 function SalesHistoryTab() {
-  const { sales, loading, error } = useSales();
+  const { sales, loading, error, updateSale } = useSales();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedSale, setSelectedSale] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -276,6 +873,22 @@ function SalesHistoryTab() {
     setDetailDialogOpen(true);
   };
 
+  const handleEditSale = (sale) => {
+    setSelectedSale(sale);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveSale = async (saleId, updatedSaleData) => {
+    try {
+      await updateSale(saleId, updatedSaleData);
+      setEditDialogOpen(false);
+      setSelectedSale(null);
+    } catch (error) {
+      console.error('Error actualizando venta:', error);
+      throw error;
+    }
+  };
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -285,10 +898,11 @@ function SalesHistoryTab() {
     setPage(0);
   };
 
-  // Calcular estadísticas
+  // Calcular estadísticas (solo ventas completadas para ingresos)
+  const completedSales = filteredSales.filter(sale => sale.status === 'completed');
   const totalSales = filteredSales.length;
-  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalItems = filteredSales.reduce((sum, sale) => 
+  const totalRevenue = completedSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalItems = completedSales.reduce((sum, sale) => 
     sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
   );
 
@@ -600,6 +1214,15 @@ function SalesHistoryTab() {
                 >
                   Ver Detalle
                 </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<Edit fontSize="small" />}
+                  onClick={() => handleEditSale(sale)}
+                  fullWidth
+                >
+                  Editar
+                </Button>
               </CardActions>
             </Card>
           ))}
@@ -660,6 +1283,13 @@ function SalesHistoryTab() {
                           title="Ver detalle"
                         >
                           <Visibility />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditSale(sale)}
+                          title="Editar venta"
+                        >
+                          <Edit />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -731,6 +1361,14 @@ function SalesHistoryTab() {
         open={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}
         sale={selectedSale}
+      />
+
+      {/* Diálogo de edición */}
+      <EditSaleDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        sale={selectedSale}
+        onSave={handleSaveSale}
       />
     </Box>
   );

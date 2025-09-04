@@ -148,8 +148,10 @@ function Dashboard() {
     return saleDate >= todayStart && saleDate <= todayEnd;
   });
 
-  const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-  const todayItemsSold = todaySales.reduce((sum, sale) => 
+  // Filtrar solo ventas completadas para ingresos
+  const todayCompletedSales = todaySales.filter(sale => sale.status === 'completed');
+  const todayRevenue = todayCompletedSales.reduce((sum, sale) => sum + sale.total, 0);
+  const todayItemsSold = todayCompletedSales.reduce((sum, sale) => 
     sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
   );
 
@@ -163,11 +165,14 @@ function Dashboard() {
     const saleDate = new Date(sale.timestamp);
     return saleDate >= weekStart;
   });
-  const weekRevenue = weekSales.reduce((sum, sale) => sum + sale.total, 0);
+  
+  // Filtrar solo ventas completadas para ingresos de la semana
+  const weekCompletedSales = weekSales.filter(sale => sale.status === 'completed');
+  const weekRevenue = weekCompletedSales.reduce((sum, sale) => sum + sale.total, 0);
 
-  // Productos más vendidos
+  // Productos más vendidos (solo ventas completadas)
   const productSales = {};
-  sales.forEach(sale => {
+  sales.filter(sale => sale.status === 'completed').forEach(sale => {
     sale.items.forEach(item => {
       if (productSales[item.id]) {
         productSales[item.id].quantity += item.quantity;
@@ -339,8 +344,8 @@ function Dashboard() {
         <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Total de Ventas"
-            value={displayCurrency(sales.reduce((sum, sale) => sum + sale.total, 0))}
-            subtitle={`${sales.length} ventas totales`}
+            value={displayCurrency(sales.filter(sale => sale.status === 'completed').reduce((sum, sale) => sum + sale.total, 0))}
+            subtitle={`${sales.filter(sale => sale.status === 'completed').length} ventas completadas`}
             icon={<TrendingUp />}
             color="info"
             isMobile={isMobile}
@@ -443,7 +448,9 @@ function Dashboard() {
             sx={{ 
               p: isMobile ? 1.5 : 2, 
               height: isMobile ? 'auto' : '400px',
-              minHeight: isMobile ? '200px' : '400px'
+              minHeight: isMobile ? '200px' : '400px',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             <Typography 
@@ -453,33 +460,35 @@ function Dashboard() {
             >
               Productos Más Vendidos
             </Typography>
-            <List>
-              {topProducts.length > 0 ? (
-                topProducts.slice(0, isMobile ? 3 : 5).map(([productId, data], index) => (
-                  <ListItem key={productId} sx={{ px: 0 }}>
-                    <ListItemText
-                      primary={`${index + 1}. ${data.name}`}
-                      secondary={`${data.quantity} vendidos - ${displayCurrency(data.revenue)}`}
+            <Box sx={{ flex: 1, overflow: 'hidden' }}>
+              <List sx={{ height: '100%', overflow: 'auto' }}>
+                {topProducts.length > 0 ? (
+                  topProducts.slice(0, isMobile ? 3 : 5).map(([productId, data], index) => (
+                    <ListItem key={productId} sx={{ px: 0 }}>
+                      <ListItemText
+                        primary={`${index + 1}. ${data.name}`}
+                        secondary={`${data.quantity} vendidos - ${displayCurrency(data.revenue)}`}
+                        primaryTypographyProps={{ 
+                          fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                        }}
+                        secondaryTypographyProps={{ 
+                          fontSize: isMobile ? '0.7rem' : '0.75rem' 
+                        }}
+                      />
+                    </ListItem>
+                  ))
+                ) : (
+                  <ListItem>
+                    <ListItemText 
+                      primary="No hay ventas registradas aún"
                       primaryTypographyProps={{ 
                         fontSize: isMobile ? '0.8rem' : '0.875rem' 
                       }}
-                      secondaryTypographyProps={{ 
-                        fontSize: isMobile ? '0.7rem' : '0.75rem' 
-                      }}
                     />
                   </ListItem>
-                ))
-              ) : (
-                <ListItem>
-                  <ListItemText 
-                    primary="No hay ventas registradas aún"
-                    primaryTypographyProps={{ 
-                      fontSize: isMobile ? '0.8rem' : '0.875rem' 
-                    }}
-                  />
-                </ListItem>
-              )}
-            </List>
+                )}
+              </List>
+            </Box>
           </Paper>
         </Grid>
 
@@ -490,7 +499,9 @@ function Dashboard() {
             sx={{ 
               p: isMobile ? 1.5 : 2, 
               height: isMobile ? 'auto' : '400px',
-              minHeight: isMobile ? '200px' : '400px'
+              minHeight: isMobile ? '200px' : '400px',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={isMobile ? 1 : 2}>
@@ -504,45 +515,47 @@ function Dashboard() {
                 <Refresh fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             </Box>
-            <List>
-              {sales.slice(-5).reverse().slice(0, isMobile ? 3 : 5).map(sale => (
-                <ListItem key={sale.id} sx={{ px: 0 }}>
-                  <ListItemText
-                    primary={`Venta #${sale.id.slice(-6)}`}
-                    secondary={
-                      <Box>
-                        <Typography 
-                          variant="body2" 
-                          color="textSecondary"
-                          sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
-                        >
-                          {format(new Date(sale.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
-                        </Typography>
-                        <Typography 
-                          variant="body2"
-                          sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
-                        >
-                          {sale.items.length} artículos - {displayCurrency(sale.total)}
-                        </Typography>
-                      </Box>
-                    }
-                    primaryTypographyProps={{ 
-                      fontSize: isMobile ? '0.8rem' : '0.875rem' 
-                    }}
-                  />
-                </ListItem>
-              ))}
-              {sales.length === 0 && (
-                <ListItem>
-                  <ListItemText 
-                    primary="No hay ventas registradas aún"
-                    primaryTypographyProps={{ 
-                      fontSize: isMobile ? '0.8rem' : '0.875rem' 
-                    }}
-                  />
-                </ListItem>
-              )}
-            </List>
+            <Box sx={{ flex: 1, overflow: 'hidden' }}>
+              <List sx={{ height: '100%', overflow: 'auto' }}>
+                {sales.slice(-5).reverse().slice(0, isMobile ? 3 : 5).map(sale => (
+                  <ListItem key={sale.id} sx={{ px: 0 }}>
+                    <ListItemText
+                      primary={`Venta #${sale.id.slice(-6)}`}
+                      secondary={
+                        <Box>
+                          <Typography 
+                            variant="body2" 
+                            color="textSecondary"
+                            sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
+                          >
+                            {format(new Date(sale.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </Typography>
+                          <Typography 
+                            variant="body2"
+                            sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
+                          >
+                            {sale.items.length} artículos - {displayCurrency(sale.total)}
+                          </Typography>
+                        </Box>
+                      }
+                      primaryTypographyProps={{ 
+                        fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                      }}
+                    />
+                  </ListItem>
+                ))}
+                {sales.length === 0 && (
+                  <ListItem>
+                    <ListItemText 
+                      primary="No hay ventas registradas aún"
+                      primaryTypographyProps={{ 
+                        fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                      }}
+                    />
+                  </ListItem>
+                )}
+              </List>
+            </Box>
           </Paper>
         </Grid>
       </Grid>
