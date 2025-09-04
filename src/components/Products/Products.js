@@ -36,6 +36,7 @@ import {
   CheckCircle
 } from '@mui/icons-material';
 import { useProducts } from '../../hooks/useProducts';
+import { useApp } from '../../contexts/AppContext';
 import ProductForm from './ProductForm';
 import StockDialog from './StockDialog';
 import { displayCurrency } from '../../utils/formatPrice';
@@ -47,6 +48,7 @@ function Products() {
     error, 
     deleteProduct 
   } = useProducts();
+  const { state } = useApp();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -58,9 +60,9 @@ function Products() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Categorías hardcodeadas por ahora (puedes moverlas a Firestore después)
-  const categories = ['Electrónicos', 'Ropa', 'Alimentación', 'Hogar', 'Deportes', 'Otros'];
-  const stockThreshold = 10;
+  // Categorías desde el contexto
+  const categories = state.categories;
+  const stockThreshold = state.stockThreshold;
 
   // Filtrar productos
   const filteredProducts = products.filter(product => {

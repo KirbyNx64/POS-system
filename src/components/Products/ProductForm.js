@@ -16,10 +16,12 @@ import {
   Typography
 } from '@mui/material';
 import { useProducts } from '../../hooks/useProducts';
+import { useApp } from '../../contexts/AppContext';
 import { formatPrice } from '../../utils/formatPrice';
 
 function ProductForm({ product, onClose }) {
   const { products, addProduct, updateProduct } = useProducts();
+  const { state } = useApp();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -33,8 +35,8 @@ function ProductForm({ product, onClose }) {
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
 
-  // Categorías disponibles
-  const categories = ['Electrónicos', 'Ropa', 'Alimentación', 'Hogar', 'Deportes', 'Otros'];
+  // Categorías disponibles desde el contexto
+  const categories = state.categories;
 
   // Función para manejar la subida de imágenes
   const handleImageUpload = (event) => {

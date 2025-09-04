@@ -1,5 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
-import { subDays, subHours } from 'date-fns';
+// Imports removidos ya que no se utilizan en este archivo
 
 // Función para generar datos de ejemplo (sistema vacío)
 export const generateSampleData = () => {
@@ -16,7 +15,24 @@ export const generateSampleData = () => {
     products: sampleProducts,
     sales: sampleSales,
     inventory: sampleInventory,
-    categories: ['Electrónicos', 'Ropa', 'Alimentación', 'Hogar', 'Deportes', 'Otros'],
+    categories: [
+      'Electrónicos',
+      'Ropa y Accesorios',
+      'Alimentación',
+      'Bebidas',
+      'Hogar y Decoración',
+      'Deportes y Fitness',
+      'Salud y Belleza',
+      'Libros y Papelería',
+      'Juguetes y Juegos',
+      'Automotriz',
+      'Jardín y Exterior',
+      'Mascotas',
+      'Farmacia',
+      'Oficina',
+      'Construcción',
+      'Otros'
+    ],
     stockThreshold: 10
   };
 };
