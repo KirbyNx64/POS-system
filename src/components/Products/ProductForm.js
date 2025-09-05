@@ -162,15 +162,10 @@ function ProductForm({ product, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('🚀 ProductForm: handleSubmit ejecutado');
-    console.log('🚀 ProductForm: formData:', formData);
-    
     if (!validateForm()) {
-      console.log('❌ ProductForm: Validación falló');
       return;
     }
 
-    console.log('✅ ProductForm: Validación exitosa, procediendo a guardar...');
     setLoading(true);
 
     try {
@@ -184,18 +179,12 @@ function ProductForm({ product, onClose }) {
         barcode: formData.barcode.trim()
       };
 
-      console.log('📝 ProductForm: Datos del producto a guardar:', productData);
-
       if (product) {
         // Actualizar producto existente
-        console.log('🔄 ProductForm: Actualizando producto existente...');
         await updateProduct(product.id, productData);
-        console.log('✅ ProductForm: Producto actualizado exitosamente');
       } else {
         // Crear nuevo producto
-        console.log('➕ ProductForm: Creando nuevo producto...');
-        const result = await addProduct(productData);
-        console.log('✅ ProductForm: Producto creado exitosamente:', result);
+        await addProduct(productData);
       }
 
       setLoading(false);

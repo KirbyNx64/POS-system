@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
@@ -21,13 +23,7 @@ export function useFirebaseAuth() {
 
   // Escuchar cambios en el estado de autenticación
   useEffect(() => {
-    console.log('🔐 useFirebaseAuth: Configurando listener de autenticación...');
-    console.log('🔐 useFirebaseAuth: Estado inicial - loading:', loading);
-    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('🔐 useFirebaseAuth: Estado de autenticación cambiado:', user ? 'Usuario autenticado' : 'Usuario no autenticado');
-      console.log('🔐 useFirebaseAuth: Usuario recibido de Firebase:', user);
-      
       if (user) {
         // Mapear usuario de Firebase a nuestro formato
         const mappedUser = {
@@ -39,11 +35,8 @@ export function useFirebaseAuth() {
           loginTime: new Date().toISOString(),
           emailVerified: user.emailVerified
         };
-        console.log('🔐 useFirebaseAuth: Usuario mapeado:', mappedUser);
-        console.log('🔐 useFirebaseAuth: Email verificado:', user.emailVerified);
         setUser(mappedUser);
       } else {
-        console.log('🔐 useFirebaseAuth: Usuario cerrado sesión');
         setUser(null);
       }
       setLoading(false);
@@ -52,51 +45,75 @@ export function useFirebaseAuth() {
     return () => unsubscribe();
   }, [loading]);
 
+  // Manejar el resultado del redirect de Google
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // El usuario se autenticó correctamente via redirect
+          setUser(result.user);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('❌ useFirebaseAuth: Error al procesar redirect de Google:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+    };
+
+    handleRedirectResult();
+  }, []);
+
   const signInWithGoogle = async () => {
     try {
-      console.log('🔐 useFirebaseAuth: Iniciando signInWithGoogle...');
       setLoading(true);
       setError(null);
       
-      console.log('🔐 useFirebaseAuth: Llamando a signInWithPopup...');
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log('🔐 useFirebaseAuth: Resultado de signInWithPopup:', result);
-      console.log('🔐 useFirebaseAuth: Usuario de Firebase:', result.user);
-      
-      // El usuario se establece automáticamente en el useEffect
-      setLoading(false); // Desactivar loading inmediatamente en caso de éxito
-      return result.user;
+      // Intentar usar popup primero, si falla por COOP, usar redirect
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        setLoading(false);
+        return result.user;
+      } catch (popupError) {
+        // Si es un error de COOP o popup bloqueado, usar redirect
+        if (popupError.code === 'auth/popup-blocked' || 
+            popupError.message?.includes('Cross-Origin-Opener-Policy') ||
+            popupError.message?.includes('window.closed')) {
+          
+          console.warn('⚠️ Popup bloqueado por COOP, usando redirect...');
+          await signInWithRedirect(auth, googleProvider);
+          // No retornamos nada aquí porque la página se redirigirá
+          return;
+        }
+        
+        // Para otros errores de popup, re-lanzar el error
+        throw popupError;
+      }
     } catch (error) {
       console.error('❌ useFirebaseAuth: Error al iniciar sesión con Google:', error);
-      console.log('❌ useFirebaseAuth: Código de error:', error.code);
       
-      // Verificar si es un error de cancelación del usuario (ventana cerrada sin seleccionar)
+      // Verificar si es un error de cancelación del usuario
       if (error.code === 'auth/popup-closed-by-user' || 
           error.code === 'auth/cancelled-popup-request' ||
-          error.code === 'auth/popup-blocked' ||
           error.code === 'auth/user-cancelled') {
-        console.log('🔐 useFirebaseAuth: Usuario cerró la ventana sin seleccionar cuenta');
-        // No establecer error para cancelaciones del usuario
         setError(null);
-        setLoading(false); // Desactivar loading INMEDIATAMENTE para cancelaciones
-        return null; // Retornar null sin lanzar error
+        setLoading(false);
+        return null;
       }
       
-      // Para otros errores, establecer el mensaje de error
       setError(error.message);
-      setLoading(false); // Desactivar loading para errores también
+      setLoading(false);
       throw error;
     }
   };
 
   const signInWithEmail = async (email, password) => {
     try {
-      console.log('🔐 useFirebaseAuth: Iniciando signInWithEmail...');
       setLoading(true);
       setError(null);
       
       const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log('🔐 useFirebaseAuth: Usuario autenticado con correo:', result.user);
       
       // No cerrar sesión si el email no está verificado, permitir que el guard maneje esto
       setLoading(false);
@@ -111,7 +128,6 @@ export function useFirebaseAuth() {
 
   const signUpWithEmail = async (email, password, displayName) => {
     try {
-      console.log('🔐 useFirebaseAuth: Iniciando signUpWithEmail...');
       setLoading(true);
       setError(null);
       
@@ -126,11 +142,8 @@ export function useFirebaseAuth() {
       
       // Enviar email de verificación
       await sendEmailVerification(result.user);
-      console.log('🔐 useFirebaseAuth: Email de verificación enviado');
       
       // NO cerrar sesión automáticamente - permitir que el usuario vea la pantalla de verificación
-      console.log('🔐 useFirebaseAuth: Usuario registrado, manteniendo sesión para verificación');
-      
       setLoading(false);
       return result.user;
     } catch (error) {
@@ -143,11 +156,9 @@ export function useFirebaseAuth() {
 
   const resetPassword = async (email) => {
     try {
-      console.log('🔐 useFirebaseAuth: Enviando email de recuperación...');
       setError(null);
       
       await sendPasswordResetEmail(auth, email);
-      console.log('🔐 useFirebaseAuth: Email de recuperación enviado');
       
       return true;
     } catch (error) {
@@ -159,7 +170,6 @@ export function useFirebaseAuth() {
 
   const resendEmailVerification = async (email, password) => {
     try {
-      console.log('🔐 useFirebaseAuth: Reenviando email de verificación...');
       setError(null);
       
       // Si no hay usuario autenticado, intentar autenticarse temporalmente
@@ -168,22 +178,18 @@ export function useFirebaseAuth() {
           throw new Error('Se requieren email y contraseña para reenviar el email de verificación');
         }
         
-        console.log('🔐 useFirebaseAuth: Autenticando temporalmente para reenviar email...');
         const result = await signInWithEmailAndPassword(auth, email, password);
         
         // Enviar email de verificación
         await sendEmailVerification(result.user);
-        console.log('🔐 useFirebaseAuth: Email de verificación reenviado');
         
         // Cerrar sesión inmediatamente después de enviar el email
         await signOut(auth);
-        console.log('🔐 useFirebaseAuth: Sesión cerrada después de reenviar email');
         
         return true;
       } else {
         // Si ya hay un usuario autenticado, enviar directamente
         await sendEmailVerification(auth.currentUser);
-        console.log('🔐 useFirebaseAuth: Email de verificación reenviado');
         return true;
       }
     } catch (error) {
@@ -200,12 +206,10 @@ export function useFirebaseAuth() {
   const refreshUser = async () => {
     try {
       if (auth.currentUser) {
-        console.log('🔐 useFirebaseAuth: Refrescando estado del usuario...');
         await auth.currentUser.reload();
         const updatedUser = auth.currentUser;
         
         if (updatedUser.emailVerified) {
-          console.log('🔐 useFirebaseAuth: Email verificado detectado, actualizando usuario...');
           const mappedUser = {
             id: updatedUser.uid,
             name: updatedUser.displayName || 'Usuario',
@@ -216,7 +220,6 @@ export function useFirebaseAuth() {
             emailVerified: true
           };
           setUser(mappedUser);
-          console.log('🔐 useFirebaseAuth: Usuario actualizado con email verificado');
           return true;
         }
       }

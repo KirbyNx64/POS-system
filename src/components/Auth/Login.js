@@ -49,11 +49,10 @@ function Login() {
       setLocalError('');
       setIsSigningIn(true);
       
-      // Timeout de seguridad más corto para ventanas cerradas
+      // Timeout de seguridad para popup/redirect
       const timeoutId = setTimeout(() => {
-        console.log('🔐 Login: Timeout de seguridad - reactivando botón');
         setIsSigningIn(false);
-      }, 5000); // 5 segundos máximo (más rápido para cancelaciones)
+      }, 10000); // 10 segundos para permitir redirect
       
       const user = await signInWithGoogle();
       
@@ -74,11 +73,10 @@ function Login() {
             loginTime: new Date().toISOString()
           }
         });
+      } else {
       }
-      // Si user es null, significa que el usuario cerró la ventana sin seleccionar - no hacer nada
     } catch (error) {
       console.error('Error en login:', error);
-      console.log('🔐 Login: Código de error recibido:', error.code);
       
       // Solo mostrar error si no es una cancelación del usuario (ventana cerrada)
       if (error.code !== 'auth/popup-closed-by-user' && 
@@ -89,7 +87,6 @@ function Login() {
       }
     } finally {
       // Reactivar el botón inmediatamente - esto es lo más importante
-      console.log('🔐 Login: Reactivando botón en finally block');
       setIsSigningIn(false);
     }
   };

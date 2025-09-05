@@ -61,7 +61,6 @@ function TabPanel({ children, value, index, isMobile = false, ...other }) {
 }
 
 function Reports() {
-  console.log('Reports - Hook ejecutándose');
   const { sales, loading: salesLoading, error: salesError } = useSales();
   const { allProducts, loading: productsLoading, error: productsError } = useProducts();
   const { businessInfo } = useBusinessInfo();
@@ -98,12 +97,6 @@ function Reports() {
   }
 
   // Debug: verificar datos cargados
-  console.log('Reports - Datos cargados:', { 
-    productsCount: allProducts.length, 
-    salesCount: sales.length,
-    sampleProduct: allProducts[0],
-    sampleSale: sales[0]
-  });
 
   // Filtrar ventas por fecha
   const filteredSales = sales.filter(sale => {
@@ -123,7 +116,6 @@ function Reports() {
       
       return (!from || saleDate >= from) && (!to || saleDate <= to);
     } catch (error) {
-      console.warn('Error procesando fecha de venta:', sale.id, sale.timestamp, error);
       return false;
     }
   });
@@ -206,7 +198,7 @@ function Reports() {
             lastMovement = format(date, 'dd/MM/yyyy');
           }
         } catch (error) {
-          console.warn('Fecha inválida para producto:', product.id, product.createdAt);
+          // Fecha inválida, usar N/A
         }
       }
       

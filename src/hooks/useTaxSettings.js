@@ -22,26 +22,15 @@ export function useTaxSettings() {
 
   // Cargar configuración de impuestos
   useEffect(() => {
-    console.log('🔧 useTaxSettings: Datos recibidos:', settingsData);
-    console.log('🔧 useTaxSettings: Usuario:', user);
-    console.log('🔧 useTaxSettings: Loading:', firestoreLoading);
-    console.log('🔧 useTaxSettings: Error:', firestoreError);
-    
     if (settingsData && settingsData.length > 0) {
       // Buscar configuración de impuestos para el usuario actual
       const taxConfig = settingsData.find(item => 
         item.type === 'taxSettings' && item.userId === user?.id
       );
-      console.log('🔧 useTaxSettings: Configuración encontrada:', taxConfig);
       
       if (taxConfig) {
-        console.log('🔧 useTaxSettings: Aplicando configuración:', taxConfig.data);
         setTaxSettings(taxConfig.data);
-      } else {
-        console.log('🔧 useTaxSettings: No se encontró configuración para el usuario');
       }
-    } else {
-      console.log('🔧 useTaxSettings: No hay datos de configuración disponibles');
     }
     
     setLoading(firestoreLoading);

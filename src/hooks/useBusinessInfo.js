@@ -24,24 +24,16 @@ export function useBusinessInfo() {
 
   // Cargar información del negocio desde Firebase
   useEffect(() => {
-    console.log('📡 useBusinessInfo: Configurando listener para información del negocio...');
-    console.log('📡 useBusinessInfo: Usuario:', user);
-    
     if (!user || !user.id) {
-      console.log('⚠️ useBusinessInfo: No hay usuario autenticado, no se puede cargar información del negocio');
       setLoading(false);
       return;
     }
 
     const businessDocRef = doc(db, 'businessInfo', user.id);
-    console.log('📡 useBusinessInfo: Referencia del documento:', businessDocRef);
     
     const unsubscribe = onSnapshot(businessDocRef, (doc) => {
-      console.log('📡 useBusinessInfo: Datos recibidos de Firebase:', doc.exists() ? 'Documento existe' : 'Documento no existe');
-      
       if (doc.exists()) {
         const data = doc.data();
-        console.log('📡 useBusinessInfo: Datos del documento:', data);
         
         const info = {
           name: data.name || '',
@@ -51,8 +43,6 @@ export function useBusinessInfo() {
           rfc: data.rfc || '',
           website: data.website || ''
         };
-        
-        console.log('📡 useBusinessInfo: Información procesada:', info);
         setBusinessInfo(info);
       } else {
         // Si no existe el documento, usar valores por defecto
@@ -64,7 +54,6 @@ export function useBusinessInfo() {
           rfc: '',
           website: ''
         };
-        console.log('📡 useBusinessInfo: Usando información por defecto:', defaultInfo);
         setBusinessInfo(defaultInfo);
       }
       setLoading(false);
@@ -80,37 +69,24 @@ export function useBusinessInfo() {
   // Guardar información del negocio en Firebase
   const saveBusinessInfo = async (info) => {
     try {
-      console.log('💾 useBusinessInfo: Intentando guardar información del negocio...');
-      console.log('💾 useBusinessInfo: Usuario:', user);
-      console.log('💾 useBusinessInfo: Información a guardar:', info);
-      
       if (!user || !user.id) {
-        console.error('❌ useBusinessInfo: Usuario no autenticado');
         throw new Error('Usuario no autenticado');
       }
 
       setError(null);
       const businessDocRef = doc(db, 'businessInfo', user.id);
-      console.log('💾 useBusinessInfo: Referencia del documento:', businessDocRef);
       
       const dataToSave = {
         ...info,
         userId: user.id,
         updatedAt: serverTimestamp()
       };
-      console.log('💾 useBusinessInfo: Datos a guardar en Firebase:', dataToSave);
       
       await setDoc(businessDocRef, dataToSave, { merge: true });
-      console.log('✅ useBusinessInfo: Información del negocio guardada exitosamente en Firebase');
 
       return true;
     } catch (error) {
       console.error('❌ useBusinessInfo: Error guardando información del negocio:', error);
-      console.error('❌ useBusinessInfo: Detalles del error:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
       setError(error.message);
       throw error;
     }

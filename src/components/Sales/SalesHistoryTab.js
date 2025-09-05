@@ -156,14 +156,10 @@ function SaleDetailDialog({ open, onClose, sale }) {
                         {item.name}
                       </Typography>
                     }
-                    secondary={
-                      <Typography 
-                        variant="caption"
-                        sx={{ fontSize: isMobile ? '0.75rem' : '0.75rem' }}
-                      >
-                        {displayCurrency(item.price)} x {item.quantity}
-                      </Typography>
-                    }
+                    secondary={`${displayCurrency(item.price)} x ${item.quantity}`}
+                    secondaryTypographyProps={{
+                      fontSize: isMobile ? '0.75rem' : '0.75rem'
+                    }}
                   />
                   <Typography 
                     variant="body2"

@@ -47,9 +47,6 @@ function StockDialog({ open, onClose, product }) {
     .slice(0, 10);
 
   // Debug: Log de movimientos
-  console.log('🔍 StockDialog: Movimientos de inventario totales:', inventoryMovements.length);
-  console.log('🔍 StockDialog: Movimientos para producto', product.id, ':', productMovements.length);
-  console.log('🔍 StockDialog: Movimientos filtrados:', productMovements);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -248,17 +245,26 @@ function StockDialog({ open, onClose, product }) {
                         </Box>
                       }
                       secondary={
-                        <Box>
-                          <Typography variant="body2">
+                        <Box component="div">
+                          <Box 
+                            component="div"
+                            sx={{ fontSize: '0.875rem' }}
+                          >
                             {movement.reason}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          </Box>
+                          <Box 
+                            component="div"
+                            sx={{ fontSize: '0.75rem', color: 'text.secondary' }}
+                          >
                             Usuario: {movement.userName || 'Sistema'}
-                          </Typography>
+                          </Box>
                           {movement.previousStock !== undefined && (
-                            <Typography variant="caption" color="text.secondary" display="block">
+                            <Box 
+                              component="div"
+                              sx={{ fontSize: '0.75rem', color: 'text.secondary', display: 'block' }}
+                            >
                               Stock anterior: {movement.previousStock} → Nuevo: {movement.newStock}
-                            </Typography>
+                            </Box>
                           )}
                         </Box>
                       }

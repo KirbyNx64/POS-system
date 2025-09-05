@@ -18,7 +18,6 @@ function EmailVerificationGuard({ children }) {
         try {
           const isVerified = await refreshUser();
           if (isVerified) {
-            console.log('🔐 EmailVerificationGuard: Verificación detectada automáticamente');
             setRefreshMessage('¡Email verificado! Accediendo al sistema...');
             // No recargar la página, dejar que el componente se actualice naturalmente
           }
@@ -69,7 +68,7 @@ function EmailVerificationGuard({ children }) {
         setRefreshMessage('¡Email verificado correctamente! Accediendo al sistema...');
         // No recargar la página, dejar que el componente se actualice naturalmente
       } else {
-        setRefreshMessage('El email aún no ha sido verificado. Por favor, revisa tu bandeja de entrada.');
+        setRefreshMessage('El email aún no ha sido verificado. Por favor, revisa tu bandeja de entrada y también la bandeja de spam.');
         setIsRefreshing(false);
       }
     } catch (error) {
@@ -121,7 +120,7 @@ function EmailVerificationGuard({ children }) {
           </Typography>
           
           <Typography variant="body2" color="text.secondary" paragraph>
-            Por favor, revisa tu bandeja de entrada y haz clic en el enlace para verificar tu cuenta.
+            Por favor, revisa tu bandeja de entrada <strong>o también la bandeja de spam</strong> y haz clic en el enlace para verificar tu cuenta.
             Una vez verificado, haz clic en el botón de abajo para actualizar el estado.
           </Typography>
 

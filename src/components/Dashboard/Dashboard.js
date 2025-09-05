@@ -85,7 +85,6 @@ function StatCard({ title, value, icon, color = 'primary', subtitle, isMobile = 
 }
 
 function Dashboard() {
-  console.log('Dashboard - Hook ejecutándose');
   const { sales, loading: salesLoading, error: salesError } = useSales();
   const { allProducts, loading: productsLoading, error: productsError } = useProducts();
   const { user } = useFirebaseAuth();
@@ -115,12 +114,6 @@ function Dashboard() {
   }
 
   // Debug: verificar datos cargados
-  console.log('Dashboard - Datos cargados:', { 
-    productsCount: allProducts.length, 
-    salesCount: sales.length,
-    products: allProducts.slice(0, 2), // Primeros 2 productos
-    sales: sales.slice(0, 2) // Primeras 2 ventas
-  });
 
   // Calcular estadísticas
   const activeProducts = allProducts.filter(p => p.active).length;
@@ -521,25 +514,12 @@ function Dashboard() {
                   <ListItem key={sale.id} sx={{ px: 0 }}>
                     <ListItemText
                       primary={`Venta #${sale.id.slice(-6)}`}
-                      secondary={
-                        <Box>
-                          <Typography 
-                            variant="body2" 
-                            color="textSecondary"
-                            sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
-                          >
-                            {format(new Date(sale.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
-                          </Typography>
-                          <Typography 
-                            variant="body2"
-                            sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
-                          >
-                            {sale.items.length} artículos - {displayCurrency(sale.total)}
-                          </Typography>
-                        </Box>
-                      }
+                      secondary={`${format(new Date(sale.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })} - ${sale.items.length} artículos - ${displayCurrency(sale.total)}`}
                       primaryTypographyProps={{ 
                         fontSize: isMobile ? '0.8rem' : '0.875rem' 
+                      }}
+                      secondaryTypographyProps={{ 
+                        fontSize: isMobile ? '0.7rem' : '0.75rem' 
                       }}
                     />
                   </ListItem>

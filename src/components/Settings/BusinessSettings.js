@@ -49,13 +49,8 @@ function BusinessSettings({ isMobile = false }) {
 
   const handleSave = async () => {
     try {
-      console.log('💾 BusinessSettings: Iniciando guardado de información del negocio...');
-      console.log('💾 BusinessSettings: Información local a guardar:', localBusinessInfo);
-      
       setSaving(true);
       await saveBusinessInfo(localBusinessInfo);
-      
-      console.log('✅ BusinessSettings: Información del negocio guardada exitosamente');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {

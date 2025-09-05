@@ -31,7 +31,7 @@ function EmailVerificationBanner() {
       setMessage('');
       
       await resendEmailVerification();
-      setMessage('Email de verificación reenviado. Revisa tu bandeja de entrada.');
+      setMessage('Email de verificación reenviado. Revisa tu bandeja de entrada y también la bandeja de spam.');
     } catch (error) {
       console.error('Error al reenviar email de verificación:', error);
       setMessage('Error al reenviar el email. Inténtalo de nuevo.');
@@ -76,7 +76,7 @@ function EmailVerificationBanner() {
             ⚠️ Verifica tu dirección de email
           </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Tu cuenta no está verificada. Por favor, revisa tu bandeja de entrada y haz clic en el enlace de verificación que te enviamos a <strong>{user.email}</strong>
+            Tu cuenta no está verificada. Por favor, revisa tu bandeja de entrada <strong>y también la bandeja de spam</strong> y haz clic en el enlace de verificación que te enviamos a <strong>{user.email}</strong>
           </Typography>
           {message && (
             <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>

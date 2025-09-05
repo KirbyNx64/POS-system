@@ -96,8 +96,6 @@ export const clearAllData = () => {
 // Función para limpiar solo las ventas de Firebase
 export const clearFirebaseSales = async (userId) => {
   try {
-    console.log('🧹 Limpiando ventas de Firebase para usuario:', userId);
-    
     // Obtener todas las ventas del usuario
     const salesQuery = query(
       collection(db, 'ventas'),
@@ -105,7 +103,6 @@ export const clearFirebaseSales = async (userId) => {
     );
     
     const salesSnapshot = await getDocs(salesQuery);
-    console.log(`📊 Encontradas ${salesSnapshot.size} ventas para eliminar`);
     
     // Eliminar cada venta
     const deletePromises = [];
@@ -114,7 +111,6 @@ export const clearFirebaseSales = async (userId) => {
     });
     
     await Promise.all(deletePromises);
-    console.log('✅ Todas las ventas eliminadas de Firebase');
     
     return { success: true, deletedCount: salesSnapshot.size };
     
@@ -127,21 +123,16 @@ export const clearFirebaseSales = async (userId) => {
 // Función para limpiar todo de Firebase
 export const clearAllFirebaseData = async (userId) => {
   try {
-    console.log('🧹 Limpiando todos los datos de Firebase para usuario:', userId);
-    
     const collections = ['ventas', 'productos', 'inventario'];
     let totalDeleted = 0;
     
     for (const collectionName of collections) {
-      console.log(`🗑️ Limpiando colección: ${collectionName}`);
-      
       const collectionQuery = query(
         collection(db, collectionName),
         where('userId', '==', userId)
       );
       
       const snapshot = await getDocs(collectionQuery);
-      console.log(`📊 Encontrados ${snapshot.size} documentos en ${collectionName}`);
       
       // Eliminar cada documento
       const deletePromises = [];
@@ -151,10 +142,8 @@ export const clearAllFirebaseData = async (userId) => {
       
       await Promise.all(deletePromises);
       totalDeleted += snapshot.size;
-      console.log(`✅ ${snapshot.size} documentos eliminados de ${collectionName}`);
     }
     
-    console.log(`✅ Total de documentos eliminados: ${totalDeleted}`);
     return { success: true, deletedCount: totalDeleted };
     
   } catch (error) {

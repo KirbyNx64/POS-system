@@ -23,7 +23,6 @@ function FirestoreTest() {
     loading,
     error,
     addProduct,
-    updateProduct,
     deleteProduct
   } = useProducts();
 
@@ -35,18 +34,13 @@ function FirestoreTest() {
     }
 
     try {
-      console.log('🚀 Intentando agregar producto...');
-      console.log('Datos del producto:', { productName, productPrice, productStock });
-      
-      const result = await addProduct({
+      await addProduct({
         name: productName,
         price: parseFloat(productPrice),
         stock: parseInt(productStock),
         category: 'Prueba',
         description: 'Producto de prueba para Firestore'
       });
-      
-      console.log('✅ Producto agregado exitosamente:', result);
       
       // Limpiar campos
       setProductName('');
@@ -56,11 +50,6 @@ function FirestoreTest() {
       alert('Producto agregado exitosamente a Firestore!');
     } catch (error) {
       console.error('❌ Error agregando producto:', error);
-      console.error('Detalles del error:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
       alert('Error al agregar producto: ' + error.message);
     }
   };

@@ -35,6 +35,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useFirebaseAuth } from '../../hooks/useFirebaseAuth';
+import FirestoreConnectionStatus from '../FirestoreConnectionStatus';
 
 const drawerWidth = 240;
 
@@ -58,10 +59,7 @@ function Layout({ children }) {
   // Debug: Log del usuario para verificar datos
   React.useEffect(() => {
     if (user) {
-      console.log('👤 Layout - Usuario actual:', user);
-      console.log('👤 Layout - photoURL:', user.photoURL);
-      console.log('👤 Layout - displayName:', user.name);
-      console.log('👤 Layout - email:', user.email);
+      // Usuario cargado correctamente
     }
   }, [user]);
 
@@ -88,11 +86,8 @@ function Layout({ children }) {
     const [fallbackUsed, setFallbackUsed] = React.useState(false);
 
     const handleError = (e) => {
-      console.log('❌ Error cargando imagen personalizada:', src);
-      
       // Si es la primera vez que falla y es una URL de proxy, intentar la URL original
       if (!fallbackUsed && src && src.includes('images.weserv.nl')) {
-        console.log('🔄 Intentando fallback a URL original...');
         setFallbackUsed(true);
         setImageError(false);
         
@@ -107,7 +102,6 @@ function Layout({ children }) {
     };
 
     const handleLoad = (e) => {
-      console.log('✅ Imagen personalizada cargada exitosamente:', src);
       if (onLoad) onLoad(e);
     };
 
@@ -230,12 +224,6 @@ function Layout({ children }) {
               <CustomAvatar 
                 src={getProcessedPhotoURL(user?.photoURL)} 
                 sx={{ width: 28, height: 28, bgcolor: 'secondary.main', fontSize: '0.8rem' }}
-                onError={(e) => {
-                  console.log('❌ Error cargando foto de perfil:', getProcessedPhotoURL(user?.photoURL));
-                }}
-                onLoad={() => {
-                  console.log('✅ Foto de perfil cargada exitosamente:', getProcessedPhotoURL(user?.photoURL));
-                }}
               >
                 {!user?.photoURL && (user?.name?.charAt(0) || user?.email?.charAt(0) || 'U')}
               </CustomAvatar>
@@ -365,12 +353,6 @@ function Layout({ children }) {
             <CustomAvatar 
               src={getProcessedPhotoURL(user?.photoURL)} 
               sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}
-              onError={(e) => {
-                console.log('❌ Error cargando foto de perfil (desktop):', getProcessedPhotoURL(user?.photoURL));
-              }}
-              onLoad={() => {
-                console.log('✅ Foto de perfil cargada exitosamente (desktop):', getProcessedPhotoURL(user?.photoURL));
-              }}
             >
               {!user?.photoURL && (user?.name?.charAt(0) || user?.email?.charAt(0) || 'U')}
             </CustomAvatar>
@@ -425,6 +407,7 @@ function Layout({ children }) {
         <Toolbar />
         {children}
       </Box>
+      <FirestoreConnectionStatus />
     </Box>
   );
 }
