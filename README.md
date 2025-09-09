@@ -1,6 +1,6 @@
 # Sistema POS - Punto de Venta e Inventario
 
-Un sistema completo de punto de venta e inventario desarrollado en React con Material-UI.
+Un sistema completo de punto de venta e inventario desarrollado en React y Firebase.
 
 ## 🚀 Características
 
@@ -68,33 +68,6 @@ Un sistema completo de punto de venta e inventario desarrollado en React con Mat
 - **UUID** - Generación de identificadores únicos
 - **Local Storage** - Persistencia de datos en el navegador
 
-## 📋 Usuarios de Prueba
-
-El sistema incluye usuarios de prueba configurados:
-
-| Usuario | Contraseña | Rol |
-|---------|------------|-----|
-| `admin` | `admin123` | Administrador |
-| `vendedor` | `vendedor123` | Vendedor |
-| `gerente` | `gerente123` | Gerente |
-
-## 🚀 Instalación y Ejecución
-
-1. **Instalar dependencias:**
-   ```bash
-   npm install
-   ```
-
-2. **Ejecutar en modo desarrollo:**
-   ```bash
-   npm start
-   ```
-
-3. **Abrir en el navegador:**
-   ```
-   http://localhost:3000
-   ```
-
 ## 📊 Sistema Limpio
 
 El sistema inicia **completamente vacío**:
@@ -149,7 +122,7 @@ El sistema inicia **completamente vacío**:
 
 ### 3. Realizar Ventas
 
-#### Cajero POS (Recomendado):
+#### Cajero POS:
 - **Escanear códigos** de barras o escribirlos manualmente
 - **Buscar por nombre** si no tienes el código
 - **Ajustar cantidad** antes de agregar
@@ -162,32 +135,6 @@ El sistema inicia **completamente vacío**:
 - **Ajustar cantidades** directamente en el carrito
 - **Procesar venta** con método de pago
 
-### 4. Consultar Reportes
-- **Filtrar por fechas** para períodos específicos
-- **Analizar ventas** por producto y categoría
-- **Revisar inventario** con estados de stock
-- **Exportar datos** para análisis externos
-
-## 🎯 Cumplimiento de Requerimientos
-
-### Requerimientos Funcionales Implementados:
-
-✅ **Autenticación individual de usuarios**
-✅ **CRUD completo de productos** con todos los campos solicitados
-✅ **Modificación de productos** (precio, descripción, foto, stock)
-✅ **Eliminación/inactivación** de productos
-✅ **Búsqueda y filtrado** avanzado de productos
-✅ **Alertas de stock bajo** configurables
-✅ **Registro de ingresos** de stock (compras)
-✅ **Registro de egresos** de stock (ventas/ajustes)
-✅ **Reportes de existencias** y movimientos
-✅ **Registro de ventas** con selección de productos
-✅ **Cálculo automático** de totales e impuestos
-✅ **Descuento automático** del inventario en ventas
-✅ **Generación de comprobantes** de venta
-✅ **Historial completo** de ventas con filtros
-✅ **Sistema de devoluciones** y ajustes de stock
-
 ## 🔄 Flujo de Trabajo Típico
 
 1. **Login** con usuario de prueba
@@ -196,5 +143,3 @@ El sistema inicia **completamente vacío**:
 4. **Procesar Ventas** usando el punto de venta
 5. **Consultar Reportes** para análisis del negocio
 6. **Gestionar Inventario** cuando sea necesario
-
-El sistema está completamente funcional y listo para ser usado como herramienta de punto de venta e inventario empresarial.

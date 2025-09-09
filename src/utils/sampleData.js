@@ -1,5 +1,3 @@
-// Imports removidos ya que no se utilizan en este archivo
-
 // Función para generar datos de ejemplo (sistema vacío)
 export const generateSampleData = () => {
   // Sistema completamente vacío - sin productos preconfigurados
